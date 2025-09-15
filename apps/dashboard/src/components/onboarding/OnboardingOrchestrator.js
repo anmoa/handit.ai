@@ -578,7 +578,7 @@ const OnboardingOrchestrator = ({
       
       // Use trigger system to determine which tour to start
       const suggestedTour = onboardingService.checkTriggers();
-      const tourId = suggestedTour ? suggestedTour.id : 'welcome-concept-walkthrough';
+      const tourId = suggestedTour ? suggestedTour.id : 'autonomous-engineer-setup';
       
       console.log('Starting tour based on triggers:', tourId);
       startOnboarding(tourId);

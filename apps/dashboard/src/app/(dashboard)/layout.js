@@ -74,7 +74,7 @@ function LayoutInner({ children }) {
     if (user && user?.onboardingCurrentTour === null) {
       // start the tour of first-optimization-celebration
       window.dispatchEvent(new CustomEvent('onboarding:start-tour', {
-        detail: { tourId: 'welcome-concept-walkthrough' }
+        detail: { tourId: 'autonomous-engineer-setup' }
       }));
     }
   }, [user]);

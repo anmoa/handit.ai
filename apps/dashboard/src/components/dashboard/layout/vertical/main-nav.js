@@ -276,7 +276,7 @@ export function MainNav({ items, title, onNewEvaluator }) {
         if (savedState) {
           const state = JSON.parse(savedState);
           console.log('state', state);
-          const inWalkthrough = state.isActive && state.tourId === 'welcome-concept-walkthrough';
+          const inWalkthrough = state.isActive && state.tourId === 'autonomous-engineer-setup';
           if (inWalkthrough !== isInWalkthrough) {
             setIsInWalkthrough(inWalkthrough);
           }
@@ -295,7 +295,7 @@ export function MainNav({ items, title, onNewEvaluator }) {
     // Listen for start tour event - immediate switch to demo agents
     const handleStartTour = (event) => {
       const { tourId } = event.detail;
-      if (tourId === 'welcome-concept-walkthrough') {
+      if (tourId === 'autonomous-engineer-setup') {
         console.log('Main nav switching to demo agents');
         setIsInWalkthrough(true);
       }
@@ -312,7 +312,7 @@ export function MainNav({ items, title, onNewEvaluator }) {
       }
       
       // Only react to inactive state (tour ending) to switch back to regular agents
-      if (tourId !== 'welcome-concept-walkthrough') {
+      if (tourId !== 'autonomous-engineer-setup') {
         debounceTimeout = setTimeout(() => {
           console.log('Main nav switching back to regular agents');
           setIsInWalkthrough(false);

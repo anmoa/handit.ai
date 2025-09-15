@@ -19,8 +19,8 @@ export const useOnboardingAgents = () => {
         const savedState = localStorage.getItem('onboardingState');
         if (savedState) {
           const state = JSON.parse(savedState);
-          // Check if user is in the welcome-concept-walkthrough tour
-          const inWalkthrough = state.isActive && state.tourId === 'welcome-concept-walkthrough';
+          // Check if user is in the autonomous-engineer-setup tour
+          const inWalkthrough = state.isActive && state.tourId === 'autonomous-engineer-setup';
           setIsInWalkthrough(inWalkthrough);
         } else {
           setIsInWalkthrough(false);
