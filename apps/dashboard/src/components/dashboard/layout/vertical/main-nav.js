@@ -632,18 +632,16 @@ export function MainNav({ items, title, onNewEvaluator }) {
                   mr: 2,
                   fontSize: '0.875rem',
                   fontWeight: 500,
-                  backgroundColor: 'rgba(113, 242, 175, 0.1)',
                   px: 1.5,
                   py: 0.5,
                   borderRadius: 1,
-                  border: '1px solid rgba(113, 242, 175, 0.3)'
                 }}
               >
                 {isInWalkthrough 
-                  ? "Set up your autonomous engineer to unlock AI optimization."
+                  ? ""
                   : shouldShowReviewPR
                     ? "Your handit integration is ready! Review the connection PR."
-                    : "Set up your autonomous engineer to unlock AI optimization."
+                    : ""
                 }
               </Typography>
             )}
@@ -677,12 +675,21 @@ export function MainNav({ items, title, onNewEvaluator }) {
                 variant="outlined"
                 color="primary"
                 onClick={() => {
-                  // Start the specific tour directly (like automatic start does)
-                  window.dispatchEvent(new CustomEvent('onboarding:start-tour', {
-                    detail: { tourId: 'autonomous-engineer-setup' }
-                  }));
+                  if (hasNoAgents) {
+                    // Start the specific tour directly (like automatic start does)
+                    window.dispatchEvent(new CustomEvent('onboarding:start-tour', {
+                      detail: { tourId: 'autonomous-engineer-setup' }
+                    }));
+                  } else {
+                    // Open GitHub installation URL with company ID
+                    const companyId = userData?.companyId || 'default';
+                    const githubUrl = `https://github.com/apps/handit-ai/installations/new?state=${companyId}`;
+                    
+                    console.log('Opening GitHub URL:', githubUrl, 'with companyId:', companyId);
+                    window.open(githubUrl, '_blank', 'noopener,noreferrer');
+                  }
                 }}
-                startIcon={<TerminalWindow size={16} />}
+                startIcon={hasNoAgents ? <TerminalWindow size={16} /> : <GithubLogo size={16} />}
                 data-testid="connect-agent-button"
                 sx={{
                   borderColor: 'transparent',
@@ -694,7 +701,7 @@ export function MainNav({ items, title, onNewEvaluator }) {
                   backgroundColor: 'rgba(117,120,255, 0.2)',
                 }}
               >
-                {hasNoAgents ? 'Get Started' : 'Set Up a new Engineer'}
+                {hasNoAgents ? 'Set Up your autonomous engineer' : 'Connect to GitHub'}
               </Button>
             )}
           </Stack>
