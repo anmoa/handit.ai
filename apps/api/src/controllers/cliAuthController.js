@@ -278,9 +278,13 @@ export const executeLLM = async (req, res) => {
     let token;
     let tokenData = null;
 
-    
-    token = process.env.OPENAI_API_KEY;
-       
+    if (!token) {
+      if (provider === 'OpenAI') {
+      token = process.env.OPENAI_API_KEY;
+      } else if (provider === 'Anthropic') {
+        token = process.env.ANTHROPIC_API_KEY;
+      }
+    }
 
     if (!token && !tokenData) {
       return res.status(500).json({ 
