@@ -2,6 +2,7 @@ import Together from "together-ai";
 import OpenAI from 'openai';
 import { GoogleGenAI, Type } from '@google/genai';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
+import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import axios from 'axios';
@@ -174,6 +175,60 @@ const generateGoogleAIResponse = async ({ messages, responseFormat, token, model
       prompt_tokens: 0, // Google AI doesn't provide token counts in the same way
       completion_tokens: 0,
       total_tokens: 0
+    }
+  };
+};
+
+/**
+ * Generate response using Anthropic
+ */
+const generateAnthropicResponse = async ({ messages, responseFormat, token, model }) => {
+  const anthropic = new Anthropic({
+    apiKey: token,
+  });
+  
+  // Handle structured output format
+  let modifiedMessages = [...messages];
+  
+  if (responseFormat) {
+    const responseFormatJson = zodSchemaToJson(responseFormat);
+    if (responseFormatJson) {
+      // Add format instructions to the system message
+      const systemMessage = modifiedMessages.find(msg => msg.role === 'system');
+      if (systemMessage) {
+        systemMessage.content = systemMessage.content + `\n\nYou must respond in the following JSON format: ${JSON.stringify(responseFormatJson, null, 2)} and you should not include any other text or comments outside of this JSON structure.`;
+      } else {
+        // Add system message if none exists
+        modifiedMessages.unshift({
+          role: 'system',
+          content: `You must respond in the following JSON format: ${JSON.stringify(responseFormatJson, null, 2)} and you should not include any other text or comments outside of this JSON structure.`
+        });
+      }
+    }
+  }
+  
+  const response = await anthropic.messages.create({
+    model: model || 'claude-3-5-sonnet-20241022',
+    max_tokens: 1024,
+    messages: modifiedMessages.map(message => ({
+      role: message.role === 'user' ? 'user' : 'assistant',
+      content: message.content
+    }))
+  });
+  
+  // Format response to match OpenAI structure
+  return {
+    choices: [{
+      message: {
+        content: response.content[0].text,
+        role: 'assistant'
+      },
+      finish_reason: response.stop_reason || 'stop'
+    }],
+    usage: {
+      prompt_tokens: response.usage?.input_tokens || 0,
+      completion_tokens: response.usage?.output_tokens || 0,
+      total_tokens: (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0)
     }
   };
 };
@@ -389,6 +444,10 @@ export const generateAIResponse = async ({
         
       case 'TogetherAI':
         completion = await generateTogetherAIResponse({ messages, responseFormat, token, model });
+        break;
+      
+      case 'Anthropic':
+        completion = await generateAnthropicResponse({ messages, responseFormat, token, model });
         break;
         
       case 'AWSBedrock':

@@ -18,6 +18,7 @@
   "license": "ISC",
   "dependencies": {
     "@ai-sdk/deepinfra": "^0.2.7",
+    "@anthropic-ai/sdk": "^0.62.0",
     "@aws-sdk/client-bedrock-runtime": "^3.848.0",
     "@google-analytics/data": "^4.10.0",
     "@google-cloud/storage": "^7.16.0",

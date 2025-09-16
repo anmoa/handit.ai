@@ -256,6 +256,12 @@ export const executeLLM = async (req, res) => {
   try {
     const { messages, model, responseFormat, temperature } = req.body;
 
+    let { provider } = req.body;
+
+    if (!provider) {
+      provider = 'OpenAI';
+    }
+
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ 
         error: 'messages array is required' 
@@ -286,7 +292,7 @@ export const executeLLM = async (req, res) => {
     const result = await generateAIResponse({
       messages,
       model,
-      provider: 'OpenAI',
+      provider,
       token,
       tokenData,
       responseFormat,
