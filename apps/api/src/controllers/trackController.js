@@ -34,13 +34,13 @@ export const bulkTrack = async (req, res) => {
     const { environment, company } = companyAuth;
     const sessionId = req.body.sessionId;
     let agentName = req.body.agentName;
-
+    let log = null;
     if (sessionId) {
-      const agentLog = await AgentLog.findOne({
+      log = await AgentLog.findOne({
         where: { sessionId },
       });
-      if (agentLog) {
-        const agent = await Agent.findByPk(agentLog.agentId);
+      if (log) {
+        const agent = await Agent.findByPk(log.agentId);
         agentName = agent.name;
       }
     }
@@ -74,13 +74,15 @@ export const bulkTrack = async (req, res) => {
     const openaiToken = req.body.openAI?.token;
     const evaluationModel = req.body.openAI?.model;
 
-    const log = await AgentLog.create({
-      agentId: agent.id,
-      input: 'processing',
-      environment,
-      status: 'processing',
-      sessionId,
-    });
+    if (!log) {
+      log = await AgentLog.create({
+        agentId: agent.id,
+        input: 'processing',
+        environment,
+        status: 'processing',
+        sessionId,
+      });
+    }
 
     let executionId = log.dataValues.id;
     // Process each item sequentially to preserve order
