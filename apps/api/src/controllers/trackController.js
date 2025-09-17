@@ -84,6 +84,8 @@ export const bulkTrack = async (req, res) => {
       });
     }
 
+    let newNodeCreated = false;
+
     let executionId = log.dataValues.id;
     // Process each item sequentially to preserve order
 
