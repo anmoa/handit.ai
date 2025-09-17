@@ -18,7 +18,7 @@ import { createAgentFromConfig } from '../services/agentCreationService.js';
 import { createAgentFromTracing } from '../services/agentTracingService.js';
 import { generateSlug } from '../utils/slugGenerator.js';
 
-const { Agent, AgentNode, Model, Company, AgentConnection } = db;
+const { Agent, AgentNode, Model, Company, AgentConnection, AgentLog } = db;
 
 export const create = async (req, res) => {
   try {
@@ -68,14 +68,29 @@ export const updateBySlug = async (req, res) => {
     let slug =  req.params.slug;
     const { userObject } = req;
     const { companyId } = userObject;
+    const { sessionId } = req.body;
     slug = generateSlug(slug);
 
+    let agent = null;
 
-    const agent = await Agent.findOne({ where: { slug, companyId } });
+    // If sessionId is provided, try to find agent through AgentLog
+    if (sessionId) {
+      const agentLog = await AgentLog.findOne({ 
+        where: { sessionId }
+      });
+      if (agentLog && agentLog.agentId) {
+        agent = await Agent.findByPk(agentLog.agentId);
+      }
+    }
+
+    // If no agent found through sessionId or sessionId not provided, use regular slug logic
+    if (!agent) {
+      agent = await Agent.findOne({ where: { slug, companyId } });
+    }
+
     if (!agent) {
       return res.status(404).json({ error: 'Agent not found' });
     }
-
 
     await agent.update({...agent, ...req.body});
     res.status(200).json(agent);
@@ -90,9 +105,26 @@ export const getAgentBySlug = async (req, res) => {
     let slug = req.params.slug;
     const { userObject } = req;
     const { companyId } = userObject;
+    const { sessionId } = req.query;
     slug = generateSlug(slug);
 
-    const agent = await Agent.findOne({ where: { slug, companyId } });
+    let agent = null;
+
+    // If sessionId is provided, try to find agent through AgentLog
+    if (sessionId) {
+      const agentLog = await AgentLog.findOne({ 
+        where: { sessionId }
+      });
+      if (agentLog && agentLog.agentId) {
+        agent = await Agent.findByPk(agentLog.agentId);
+      }
+    }
+
+    // If no agent found through sessionId or sessionId not provided, use regular slug logic
+    if (!agent) {
+      agent = await Agent.findOne({ where: { slug, companyId } });
+    }
+
     if (!agent) {
       return res.status(404).json({ error: 'Agent not found' });
     }
