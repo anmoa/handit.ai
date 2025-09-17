@@ -274,7 +274,7 @@ export const testPromptOptimizationAndEmail = async (req, res) => {
       optimizedPrompt: newPrompt,
       metrics,
       models: db,
-      modelLog: modelLog
+      modelLog: modelLog.dataValues ? modelLog.dataValues : modelLog
     });
 
     if (!prResult.success) {
