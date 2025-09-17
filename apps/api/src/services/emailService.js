@@ -1244,7 +1244,7 @@ export const sendTestModelFailureAlert = async (modelLogId, sequelize) => {
     console.log(`🚨 Sending test model failure alert for modelLog ID: ${modelLogId}`);
     
     // Get the modelLog entry
-    const modelLog = await sequelize.models.ModelLog.findByPk(modelLogId);
+    const modelLog = await sequelize.ModelLog.findByPk(modelLogId);
     if (!modelLog) {
       throw new Error(`ModelLog with ID ${modelLogId} not found`);
     }
@@ -1260,13 +1260,13 @@ export const sendTestModelFailureAlert = async (modelLogId, sequelize) => {
     // Send the model failure notification
     await sendModelFailureNotification(
       modelLog,
-      sequelize.models.Model,
-      sequelize.models.AgentLog,
-      sequelize.models.Agent,
-      sequelize.models.AgentNode,
-      sequelize.models.Company,
-      sequelize.models.Email,
-      sequelize.models.User
+      sequelize.Model,
+      sequelize.AgentLog,
+      sequelize.Agent,
+      sequelize.AgentNode,
+      sequelize.Company,
+      sequelize.Email,
+      sequelize.User
     );
     
     console.log(`✅ Test model failure alert sent successfully for modelLog ID: ${modelLogId}`);
