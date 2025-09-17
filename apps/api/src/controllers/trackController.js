@@ -32,8 +32,21 @@ export const bulkTrack = async (req, res) => {
       return res.status(401).json({ error: 'Invalid token' });
     }
     const { environment, company } = companyAuth;
-    const agentName = req.body.agentName;
+    const sessionId = req.body.sessionId;
+    let agentName = req.body.agentName;
+
+    if (sessionId) {
+      const agentLog = await AgentLog.findOne({
+        where: { sessionId },
+      });
+      if (agentLog) {
+        const agent = await Agent.findByPk(agentLog.agentId);
+        agentName = agent.name;
+      }
+    }
     const agentSlug = agentName ? generateSlug(agentName) : null;
+
+   
     let agent = await Agent.findOne({
       where: { slug: agentSlug, companyId: company.id },
     });
@@ -66,11 +79,11 @@ export const bulkTrack = async (req, res) => {
       input: 'processing',
       environment,
       status: 'processing',
+      sessionId,
     });
 
     let executionId = log.dataValues.id;
     // Process each item sequentially to preserve order
-    let newNodeCreated = false;
 
     const results = [];
     for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
