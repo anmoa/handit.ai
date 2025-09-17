@@ -1232,3 +1232,61 @@ export const sendBulkPromptVersionCreatedEmails = async ({
   );
   return results;
 };
+
+/**
+ * Test endpoint to send model failure alert for a given modelLog ID
+ * @param {number} modelLogId - ID of the model log entry
+ * @param {Object} sequelize - Sequelize instance with models
+ * @returns {Promise<Object>} Result of the operation
+ */
+export const sendTestModelFailureAlert = async (modelLogId, sequelize) => {
+  try {
+    console.log(`🚨 Sending test model failure alert for modelLog ID: ${modelLogId}`);
+    
+    // Get the modelLog entry
+    const modelLog = await sequelize.models.ModelLog.findByPk(modelLogId);
+    if (!modelLog) {
+      throw new Error(`ModelLog with ID ${modelLogId} not found`);
+    }
+    
+    console.log(`📋 Found modelLog:`, {
+      id: modelLog.id,
+      modelId: modelLog.modelId,
+      agentLogId: modelLog.agentLogId,
+      status: modelLog.status,
+      createdAt: modelLog.createdAt
+    });
+    
+    // Send the model failure notification
+    await sendModelFailureNotification(
+      modelLog,
+      sequelize.models.Model,
+      sequelize.models.AgentLog,
+      sequelize.models.Agent,
+      sequelize.models.AgentNode,
+      sequelize.models.Company,
+      sequelize.models.Email,
+      sequelize.models.User
+    );
+    
+    console.log(`✅ Test model failure alert sent successfully for modelLog ID: ${modelLogId}`);
+    
+    return {
+      success: true,
+      message: `Model failure alert sent successfully for modelLog ID: ${modelLogId}`,
+      modelLogId: modelLogId,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error(`❌ Error sending test model failure alert for modelLog ID ${modelLogId}:`, error);
+    
+    return {
+      success: false,
+      message: `Failed to send model failure alert: ${error.message}`,
+      modelLogId: modelLogId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+};

@@ -1,5 +1,5 @@
 import { sendEmail } from "../services/emailService.js";
-import { sendModelFailureNotification } from "../services/emailService.js";
+import { sendModelFailureNotification, sendTestModelFailureAlert } from "../services/emailService.js";
 import db from '../../models/index.js';
 
 const { ModelLog, Model, AgentLog, Agent, AgentNode, Company, Email, User } = db;
@@ -54,5 +54,31 @@ export const testModelFailureNotification = async (req, res) => {
   } catch (error) {
     console.error('Error sending model failure notification:', error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+export const testModelFailureAlert = async (req, res) => {
+  try {
+    const { modelLogId } = req.body;
+
+    if (!modelLogId) {
+      return res.status(400).json({ error: 'modelLogId is required' });
+    }
+
+    // Use our new test function
+    const result = await sendTestModelFailureAlert(modelLogId, db);
+
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  } catch (error) {
+    console.error('Error sending test model failure alert:', error);
+    res.status(500).json({ 
+      success: false,
+      message: `Failed to send test model failure alert: ${error.message}`,
+      error: error.message 
+    });
   }
 };
