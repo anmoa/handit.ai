@@ -192,6 +192,7 @@ export const testPromptOptimizationAndEmail = async (req, res) => {
     const { 
       agentId, 
       modelId, 
+      modelLogId,
       newPrompt, 
       originalPrompt = null,
       promptVersion = 'v1.1.0'
@@ -209,6 +210,13 @@ export const testPromptOptimizationAndEmail = async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'modelId is required'
+      });
+    }
+
+    if (!modelLogId) {
+      return res.status(400).json({
+        success: false,
+        error: 'modelLogId is required'
       });
     }
 
@@ -237,6 +245,15 @@ export const testPromptOptimizationAndEmail = async (req, res) => {
       });
     }
 
+    // Find the model log
+    const modelLog = await ModelLog.findByPk(modelLogId);
+    if (!modelLog) {
+      return res.status(404).json({
+        success: false,
+        error: `ModelLog with ID ${modelLogId} not found`
+      });
+    }
+
     // Get original prompt from model if not provided
     let finalOriginalPrompt = originalPrompt;
     if (!finalOriginalPrompt) {
@@ -257,7 +274,7 @@ export const testPromptOptimizationAndEmail = async (req, res) => {
       optimizedPrompt: newPrompt,
       metrics,
       models: db,
-      modelLog: null
+      modelLog: modelLog
     });
 
     if (!prResult.success) {
