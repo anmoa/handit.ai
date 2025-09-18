@@ -16,8 +16,8 @@ export async function createEvaluationPrompt(req, res) {
       metricId: metric.id,
       isGlobal: false,
       companyId,
-      defaultProviderModel,
-      defaultIntegrationTokenId,
+      defaultProviderModel: defaultProviderModel !== '' ? defaultProviderModel : null,
+      defaultIntegrationTokenId: defaultIntegrationTokenId !== '' ? defaultIntegrationTokenId : null,
     });
     return res.status(201).json({ success: true, data: newPrompt });
   } catch (error) {
