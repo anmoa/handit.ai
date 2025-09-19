@@ -1578,7 +1578,7 @@ export function TracingModal({
             type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
             position: {
               ...node.position,
-              x: node.position.x * 2.0 // Add 100% more horizontal spacing for larger nodes
+              x: node.position?.x ? node.position.x * 2.0 : 0 // Add 100% more horizontal spacing for larger nodes
             },
             data: {
               ...node.data,
@@ -1653,7 +1653,7 @@ export function TracingModal({
             type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
             position: {
               ...node.position,
-              x: node.position.x * 2.0 // Add 100% more horizontal spacing for larger nodes
+              x: node.position?.x ? node.position.x * 2.0 : 0 // Add 100% more horizontal spacing for larger nodes
             },
             data: {
               ...node.data,
@@ -1678,7 +1678,7 @@ export function TracingModal({
           type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
           position: {
             ...node.position,
-            x: node.position.x * 1.5 // Add 50% more horizontal spacing
+            x: node.position?.x ? node.position.x * 1.5 : 0 // Add 50% more horizontal spacing
           },
           data: {
             ...node.data,
@@ -1698,39 +1698,48 @@ export function TracingModal({
   }, [nodes, edges, entry, selectedNode, selectedCycle, disableCycles]);
 
   // Calculate viewport to center first node or use fitView for small graphs
-  const initialViewport = React.useMemo(() => {
+  const { initialViewport, shouldUseFitView } = React.useMemo(() => {
     if (processedNodes.length > 0) {
       // Count unique Y levels
-      const uniqueYLevels = [...new Set(processedNodes.map(node => Math.round(node.position.y / 50) * 50))];
-      const shouldUseFitView = uniqueYLevels.length < 6;
+      const uniqueYLevels = [...new Set(processedNodes.map(node => Math.round((node.position?.y || 0) / 50) * 50))];
+      const shouldFitView = uniqueYLevels.length < 6;
       
-      console.log('🎯 Y levels:', uniqueYLevels.length, 'shouldUseFitView:', shouldUseFitView);
+      console.log('🎯 Y levels:', uniqueYLevels.length, 'shouldUseFitView:', shouldFitView);
       
-      if (shouldUseFitView) {
-        // Use fitView for small graphs - return null to trigger fitView
-        return null;
+      if (shouldFitView) {
+        // Use fitView for small graphs - return a default viewport that will be overridden by fitView
+        return { 
+          initialViewport: { x: 0, y: 0, zoom: 0.5 },
+          shouldUseFitView: true 
+        };
       } else {
         // Find the first node for custom centering
         const firstNode = processedNodes.reduce((first, current) => {
           if (!first) return current;
-          if (current.position.y < first.position.y) return current;
-          if (current.position.y === first.position.y && current.position.x < first.position.x) return current;
+          if ((current.position?.y || 0) < (first.position?.y || 0)) return current;
+          if ((current.position?.y || 0) === (first.position?.y || 0) && (current.position?.x || 0) < (first.position?.x || 0)) return current;
           return first;
         }, null);
 
         if (firstNode) {
           // Center the first node on screen with proper calculation
           return {
-            x: -firstNode.position.x + 400, // Move first node to 400px from left (center-ish)
-            y: -firstNode.position.y + 150, // Move first node to 150px from top
-            zoom: 0.6 // Good balance between detail and overview
+            initialViewport: {
+              x: -(firstNode.position?.x || 0) + 400, // Move first node to 400px from left (center-ish)
+              y: -(firstNode.position?.y || 0) + 150, // Move first node to 150px from top
+              zoom: 0.6 // Good balance between detail and overview
+            },
+            shouldUseFitView: false
           };
         }
       }
     }
     
     // Default viewport if no nodes
-    return { x: 250, y: 20, zoom: 0.4 };
+    return { 
+      initialViewport: { x: 250, y: 20, zoom: 0.4 },
+      shouldUseFitView: false 
+    };
   }, [processedNodes]);
 
   const handlePaneClick = () => {
@@ -1909,8 +1918,8 @@ export function TracingModal({
         edgeMap.forEach((edgeGroup, key) => {
           if (edgeGroup.length === 1) {
             const edge = edgeGroup[0];
-            const sourcePos = edge.sourcePos;
-            const targetPos = edge.targetPos;
+            const sourcePos = edge.sourcePos || { x: 0, y: 0 };
+            const targetPos = edge.targetPos || { x: 0, y: 0 };
             
             // Calculate if nodes are at same level (horizontal connection)
             const isHorizontal = Math.abs(sourcePos.y - targetPos.y) < 50; // 50px tolerance for "same level"
@@ -1990,15 +1999,15 @@ export function TracingModal({
             // Bidirectional edges - determine if horizontal or vertical
             const edge1 = edgeGroup[0];
             const edge2 = edgeGroup[1];
-            const sourcePos = edge1.sourcePos;
-            const targetPos = edge1.targetPos;
+            const sourcePos = edge1.sourcePos || { x: 0, y: 0 };
+            const targetPos = edge1.targetPos || { x: 0, y: 0 };
             
             const isHorizontal = Math.abs(sourcePos.y - targetPos.y) < 50;
             const isLeftToRight = sourcePos.x < targetPos.x;
             
             if (isHorizontal) {
               // Horizontal bidirectional connection with straight lines
-              const leftToRight = edgeGroup.find(e => e.sourcePos.x < e.targetPos.x);
+              const leftToRight = edgeGroup.find(e => (e.sourcePos?.x || 0) < (e.targetPos?.x || 0));
               if (leftToRight) {
                 finalEdges.push({
                   ...leftToRight,
@@ -2208,7 +2217,7 @@ export function TracingModal({
                   <ReactFlowProvider>
                     <ReactFlow
                       key={flowKey}
-                      nodes={processedNodes}
+                      nodes={processedNodes.filter(node => node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number')}
                       edges={processedEdges}
                       edgeTypes={edgeTypes}
                       nodeTypes={nodeTypes}
@@ -2217,8 +2226,8 @@ export function TracingModal({
                         setSelectedStep(node.data.sequence[0]);
                       }}
                       defaultViewport={initialViewport}
-                      fitView={initialViewport === null}
-                      fitViewOptions={initialViewport === null ? { padding: 0.1 } : undefined}
+                      fitView={shouldUseFitView}
+                      fitViewOptions={shouldUseFitView ? { padding: 0.1 } : undefined}
                       nodesDraggable={false}
                       nodesConnectable={false}
                       minZoom={0.1}
