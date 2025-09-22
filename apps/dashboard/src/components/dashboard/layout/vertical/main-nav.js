@@ -498,11 +498,6 @@ export function MainNav({ items, title, onNewEvaluator }) {
                 Update Agent
               </Typography>
             )}
-            {path === '/docs' && (
-              <Typography variant="h4" component="h1" sx={{ pl: 5 }}>
-                My Docs
-              </Typography>
-            )}
             {(path.includes('ag-monitoring') || path.includes('ag-tracing') || path.includes('model-versions') || path.includes('prompt-versions')) && (
               <div style={{
                 paddingLeft: '10px'
