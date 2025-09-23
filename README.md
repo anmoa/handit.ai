@@ -239,23 +239,6 @@ XBuild's AI was suffering from prompt drift that tanked performance across key m
 
 ---
 
-## ⚡ Features: Everything Your AI Teammate Does
-
-Handit isn't just another tool—it's a dedicated teammate handling your AI reliability 24/7.
-
-### 🔍 Real-Time Failure Detection
-**Never Miss a Failure:** Catches hallucinations, schema breaks, PII leaks, and performance issues as they happen. No more finding out from angry customers.
-
-### 🤖 Automated Fix Generation  
-**Writes Production-Ready Code:** Generates prompt improvements, config changes, and guardrails. Tests each fix against real failures before shipping.
-
-### 📊 A/B Testing & Validation
-**Data-Driven Decisions:** Every fix is tested on live data. See exact accuracy improvements, latency impacts, and success rates before deploying.
-
-### 🧠 Fix Registry & Memory
-**Gets Smarter Over Time:** Remembers every failure and successful fix. Instantly applies proven solutions to recurring issues. Your teammate's growing expertise.
-
----
 
 ## 🛠️ Advanced: Manual Setup
 
@@ -333,18 +316,18 @@ Write your AI agents in your preferred language:
 
 ## 🚧 Roadmap
 
-We have a public roadmap for handit.ai. You can view it [here](https://github.com/handit-ai/autonom/projects/1).
+We have a public roadmap for handit.ai. You can view it [here](https://github.com/handit-ai/handit.ai/projects/1).
 
 Feel free to add comments to the issues, or create a new issue if you have a feature request.
 
 | Feature | Status | Link | Description |
 |---------|--------|------|-------------|
-| Advanced Prompt Optimization | Planned | [#485](https://github.com/handit-ai/autonom/issues/485) | Multi-model prompt optimization |
-| Custom Evaluation Metrics | Planned | [#495](https://github.com/handit-ai/autonom/issues/495) | User-defined evaluation criteria |
-| Real-time Dashboard | Planned | [#497](https://github.com/handit-ai/autonom/issues/497) | Live monitoring interface |
-| Auto-deployment | Planned | [#476](https://github.com/handit-ai/autonom/issues/476) | Automated deployment with guardrails |
-| Multi-agent Support | Planned | [#477](https://github.com/handit-ai/autonom/issues/477) | Complex agent orchestration |
-| Custom Integrations | Planned | [#480](https://github.com/handit-ai/autonom/issues/480) | Third-party tool integrations |
+| Advanced Prompt Optimization | Planned | [#485](https://github.com/handit-ai/handit.ai/issues/485) | Multi-model prompt optimization |
+| Custom Evaluation Metrics | Planned | [#495](https://github.com/handit-ai/handit.ai/issues/495) | User-defined evaluation criteria |
+| Real-time Dashboard | Planned | [#497](https://github.com/handit-ai/handit.ai/issues/497) | Live monitoring interface |
+| Auto-deployment | Planned | [#476](https://github.com/handit-ai/handit.ai/issues/476) | Automated deployment with guardrails |
+| Multi-agent Support | Planned | [#477](https://github.com/handit-ai/handit.ai/issues/477) | Complex agent orchestration |
+| Custom Integrations | Planned | [#480](https://github.com/handit-ai/handit.ai/issues/480) | Third-party tool integrations |
 
 ---
 
@@ -352,9 +335,8 @@ Feel free to add comments to the issues, or create a new issue if you have a fea
 
 - 📖 **[Documentation](https://docs.handit.ai)** - Complete guides and API reference
 - 💬 **[Discord](https://discord.gg/handit-ai)** - Community support and discussions  
-- 🐛 **[GitHub Issues](https://github.com/handit-ai/autonom/issues)** - Bug reports and feature requests
-- 🗺️ **[Roadmap](https://github.com/handit-ai/autonom/projects/1)** - Upcoming features and progress
-- 🎥 **[Demo](https://handit.ai/demo)** - See handit in action
+- 🐛 **[GitHub Issues](https://github.com/handit-ai/handit.ai/issues)** - Bug reports and feature requests
+- 🎥 **[Demo](https://handit.ai)** - See handit in action
 
 ---
 
@@ -373,8 +355,8 @@ Check our [Contributing Guide](CONTRIBUTING.md) to get started.
 
 ```bash
 # Clone the repository
-git clone https://github.com/handit-ai/autonom.git
-cd autonom
+git clone https://github.com/handit-ai/handit.ai.git
+cd handit.ai
 
 # Install dependencies
 npm install
@@ -416,7 +398,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Let handit.ai handle the 2am failures while you focus on building features.
 
-[**Get Started Free**](https://dashboard.handit.ai) • [**View on GitHub**](https://github.com/handit-ai/autonom) • [**Join Discord**](https://discord.gg/handit-ai)
+[**Get Started Free**](https://dashboard.handit.ai) • [**View on GitHub**](https://github.com/handit-ai/handit.ai) • [**Join Discord**](https://discord.gg/handit-ai)
 
 *Open source. GitHub-native. Starts working in minutes.*
 
