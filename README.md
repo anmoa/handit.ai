@@ -404,4 +404,14 @@ Let handit.ai handle the 2am failures while you focus on building features.
 
 </div>
 
+---
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=handit-ai/handit.ai&type=Date)](https://www.star-history.com/#handit-ai/handit.ai&Date)
+
+<sub>Built with ❤️ by the Handit team • **Star us if you find Handit useful!** ⭐</sub>
+
+</div>
+
 
