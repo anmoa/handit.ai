@@ -337,39 +337,6 @@ XBuild's AI was suffering from prompt drift that tanked performance across key m
 - **Advanced:** [Manual Setup](https://docs.handit.ai/manual-setup) for custom configurations
 
 ---
-## 🎯 Examples
-
-### 🏆 **[ChessArena.ai](https://chessarena.ai)** - Full-Featured Production App
-A complete chess platform benchmarking LLM performance with real-time evaluation.
-
-**[Live Website →](https://chessarena.ai)** | **[Source Code →](https://github.com/handit-ai/chessarena)**
-
-Built from scratch to production deployment, featuring:
-
-🔐 **Authentication & user management**  
-🤖 **Multi-agent LLM evaluation** (OpenAI, Claude, Gemini, Grok)  
-🐍 **Python engine integration** (Stockfish chess evaluation)  
-📊 **Real-time streaming** with live move updates and scoring  
-🎨 **Modern React UI** with interactive chess boards  
-🔄 **Event-driven workflows** connecting TypeScript APIs to Python processors  
-📈 **Live leaderboards** with move-by-move quality scoring  
-🚀 **Production deployment** on Handit Cloud  
-
-### 📚 More Examples
-
-| Example | Description |
-|---------|-------------|
-| **AI Research Agent** | Web research with iterative analysis |
-| **Streaming Chatbot** | Real-time AI responses |
-| **Gmail Automation** | Smart email processing |
-| **GitHub PR Manager** | Automated PR workflows |
-| **Finance Agent** | Real-time market analysis |
-
-**Features demonstrated:** Multi-language workflows • Real-time streaming • AI integration • Production deployment
-
-**[View all 20+ examples →](https://github.com/handit-ai/handit-examples)**
-
----
 
 ## 🌐 Language Support
 
