@@ -369,8 +369,8 @@ npm run dev
 
 Thanks to everyone helping bring Handit to life:
 
-<a href="https://github.com/handit-ai/handit.ai/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=handit-ai/handit.ai" />
+<a href="https://github.com/handit-ai/autonom/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=handit-ai/autonom" />
 </a>
 
 > Want to appear here? Star the repo, follow along, and make your first PR 🙌
