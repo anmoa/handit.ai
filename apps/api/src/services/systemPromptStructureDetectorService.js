@@ -7,10 +7,12 @@ const SystemPromptStructureSchema = z.object({
     type: z.enum(['direct', 'nested', 'array']).describe('The type of structure: direct (direct field), nested (nested object), or array (array of messages)'),
     field: z.string().describe('The specific field name that contains the system prompt'),
     arrayIndex: z.number().optional().describe('If type is array, the index where system prompt is found'),
-    parentField: z.string().optional().describe('The parent field that contains the system prompt field')
+    parentField: z.string().optional().describe('The parent field that contains the system prompt field'),
+    staticPromptEndPosition: z.number().optional().describe('Character position where the static part of the prompt ends (before dynamic replacements)')
   }),
   confidence: z.number().min(0).max(1).describe('Confidence level in the detected structure (0-1)'),
-  reasoning: z.string().describe('Explanation of how the structure was detected')
+  reasoning: z.string().describe('Explanation of how the structure was detected'),
+  promptType: z.enum(['system', 'user']).describe('Whether the detected prompt is a system prompt or user prompt')
 });
 
 /**
@@ -23,14 +25,16 @@ export const detectSystemPromptStructure = async (logs, model) => {
   try {
 
     // Take a sample of logs for analysis
-    const sampleLogs = logs.slice(0, Math.min(2, logs.length));
+    const sampleLogs = logs.slice(0, Math.min(3, logs.length));
     
     // Prepare the analysis data
     const analysisData = sampleLogs.map((log, index) => ({
       logIndex: index,
       input: log.input,
       hasSystemPrompt: false,
-      systemPromptLocation: null
+      hasUserPrompt: false,
+      systemPromptLocation: null,
+      userPromptLocation: null
     }));
 
     // First pass: manually check for common patterns
@@ -39,6 +43,13 @@ export const detectSystemPromptStructure = async (logs, model) => {
       if (systemPrompt) {
         data.hasSystemPrompt = true;
         data.systemPromptLocation = systemPrompt;
+      } else {
+        // If no system prompt found, look for user prompts
+        const userPrompt = findUserPromptInData(data.input);
+        if (userPrompt) {
+          data.hasUserPrompt = true;
+          data.userPromptLocation = userPrompt;
+        }
       }
     }
 
@@ -50,7 +61,21 @@ export const detectSystemPromptStructure = async (logs, model) => {
       return {
         structure,
         confidence: 0.9,
-        reasoning: `Detected consistent system prompt structure across ${logsWithSystemPrompts.length} logs`
+        reasoning: `Detected consistent system prompt structure across ${logsWithSystemPrompts.length} logs`,
+        promptType: 'system'
+      };
+    }
+
+    // If we found user prompts in at least 2 logs, analyze the pattern
+    const logsWithUserPrompts = analysisData.filter(data => data.hasUserPrompt);
+    
+    if (logsWithUserPrompts.length >= 2) {
+      const structure = analyzeUserPromptPattern(logsWithUserPrompts);
+      return {
+        structure,
+        confidence: 0.8,
+        reasoning: `Detected consistent user prompt structure across ${logsWithUserPrompts.length} logs (no system prompt found)`,
+        promptType: 'user'
       };
     }
 
@@ -58,34 +83,42 @@ export const detectSystemPromptStructure = async (logs, model) => {
     const messages = [
       {
         role: 'system',
-        content: `You are an expert at analyzing data structures and identifying where system prompts are located. 
+        content: `You are an expert at analyzing data structures and identifying where prompts are located. 
         
-        Your task is to analyze the provided input data structures and determine the most likely path where system prompts are stored.
+        Your task is to analyze the provided input data structures and determine the most likely path where prompts are stored.
         
-        Common patterns include:
-        - messages[0].content (for chat-style inputs)
+        First, look for system prompts. Common patterns include:
+        - messages[0].content (for chat-style inputs where first message is system)
         - input.options.systemMessage (for structured inputs)
         - systemMessage (direct field)
         - prompt (direct field)
         - system (direct field)
         
-        Look for:
-        1. Fields that contain instructional text
-        2. Fields that appear consistently across multiple inputs
-        3. Fields that are likely to contain system instructions
+        If no system prompt is found, look for user prompts that contain the main instruction:
+        - messages[1].content (for chat-style inputs where second message is user)
+        - input.content (for direct inputs)
+        - userMessage (direct field)
+        - query (direct field)
+        - text (direct field)
         
-        Return a structured response with the detected path and confidence level.`
+        For each prompt found, also determine where the static part ends and dynamic content begins.
+        Look for patterns like:
+        - Template variables like {variable} or {{variable}}
+        - Dynamic content that changes between logs
+        - User-specific data that gets inserted
+        
+        Return a structured response with the detected path, confidence level, and prompt type.`
       },
       {
         role: 'user',
-        content: `Analyze these input data structures and determine where system prompts are most likely located:
+        content: `Analyze these input data structures and determine where prompts are most likely located:
 
-${JSON.stringify([analysisData[0]].map(data => ({
+${JSON.stringify(analysisData.map(data => ({
   logIndex: data.logIndex,
   input: data.input
 })), null, 2)}
 
-Focus on finding consistent patterns across the logs. If no clear pattern exists, provide the most likely structure based on the data format.`
+Focus on finding consistent patterns across the logs. If no clear pattern exists, provide the most likely structure based on the data format. Also identify where the static part of the prompt ends.`
       }
     ];
 
@@ -102,7 +135,8 @@ Focus on finding consistent patterns across the logs. If no clear pattern exists
     return {
       structure: null,
       confidence: 0,
-      reasoning: `Error during detection: ${error.message}`
+      reasoning: `Error during detection: ${error.message}`,
+      promptType: null
     };
   }
 };
@@ -160,6 +194,60 @@ const findSystemPromptInData = (data) => {
 };
 
 /**
+ * Manually searches for user prompts in data using common patterns
+ * @param {any} data - The input data to search
+ * @returns {Object|null} The found user prompt location or null
+ */
+const findUserPromptInData = (data) => {
+  if (!data) return null;
+
+  // Check for direct user message in array
+  if (Array.isArray(data)) {
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      if (item && typeof item === 'object' && item.role === 'user' && item.content) {
+        return {
+          path: `[${i}].content`,
+          type: 'array',
+          field: 'content',
+          arrayIndex: i,
+          parentField: 'role'
+        };
+      }
+    }
+  }
+
+  // Check for nested user message
+  if (typeof data === 'object') {
+    // Check common patterns for user prompts
+    const patterns = [
+      { path: 'input.content', field: 'content', parentField: 'input' },
+      { path: 'content', field: 'content' },
+      { path: 'userMessage', field: 'userMessage' },
+      { path: 'query', field: 'query' },
+      { path: 'text', field: 'text' },
+      { path: 'message', field: 'message' },
+      { path: 'input.query', field: 'query', parentField: 'input' },
+      { path: 'input.text', field: 'text', parentField: 'input' }
+    ];
+
+    for (const pattern of patterns) {
+      const value = getNestedValue(data, pattern.path);
+      if (value && typeof value === 'string' && value.length > 10) {
+        return {
+          path: pattern.path,
+          type: 'nested',
+          field: pattern.field,
+          parentField: pattern.parentField
+        };
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
  * Analyzes patterns in system prompt locations
  * @param {Array} logsWithSystemPrompts - Logs that contain system prompts
  * @returns {Object} The detected structure
@@ -167,6 +255,38 @@ const findSystemPromptInData = (data) => {
 const analyzeSystemPromptPattern = (logsWithSystemPrompts) => {
   // Group by structure type
   const structures = logsWithSystemPrompts.map(log => log.systemPromptLocation);
+  
+  // Find the most common structure
+  const structureCounts = {};
+  structures.forEach(structure => {
+    const key = `${structure.type}:${structure.path}`;
+    structureCounts[key] = (structureCounts[key] || 0) + 1;
+  });
+
+  const mostCommonKey = Object.keys(structureCounts).reduce((a, b) => 
+    structureCounts[a] > structureCounts[b] ? a : b
+  );
+
+  const [type, path] = mostCommonKey.split(':');
+  const mostCommonStructure = structures.find(s => `${s.type}:${s.path}` === mostCommonKey);
+
+  return {
+    path: mostCommonStructure.path,
+    type: mostCommonStructure.type,
+    field: mostCommonStructure.field,
+    arrayIndex: mostCommonStructure.arrayIndex,
+    parentField: mostCommonStructure.parentField
+  };
+};
+
+/**
+ * Analyzes patterns in user prompt locations
+ * @param {Array} logsWithUserPrompts - Logs that contain user prompts
+ * @returns {Object} The detected structure
+ */
+const analyzeUserPromptPattern = (logsWithUserPrompts) => {
+  // Group by structure type
+  const structures = logsWithUserPrompts.map(log => log.userPromptLocation);
   
   // Find the most common structure
   const structureCounts = {};
