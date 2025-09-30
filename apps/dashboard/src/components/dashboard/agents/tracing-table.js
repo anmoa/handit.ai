@@ -65,6 +65,7 @@ import { useDispatch } from 'react-redux';
 import { parseInputContent } from '@/lib/parsers';
 import { FilterButton, FilterButtonDialog, FilterPopover, useFilterContext } from '@/components/core/filter-button';
 import { Option } from '@/components/core/option';
+import { useUser } from '@/hooks/use-user';
 
 import { TracingModal } from './tracing-modal';
 
@@ -120,16 +121,29 @@ function NodeFilterDialog({ agentDetails }) {
   const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
   const [selectedNode, setSelectedNode] = React.useState(initialValue);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const { user } = useUser();
 
   const { modelNodes, toolNodes } = React.useMemo(() => {
-    const filtered =
-      agentDetails?.AgentNodes?.filter((node) => node.name.toLowerCase().includes(searchQuery.toLowerCase())) || [];
+    let availableNodes = agentDetails?.AgentNodes || [];
+    
+    // Check if company has showTrackedNodesOnly enabled
+    const showTrackedNodesOnly = user?.company?.showTrackedNodesOnly || false;
+    
+    if (showTrackedNodesOnly) {
+      // Only show nodes that have execution steps - we need to get this from the current entry flow
+      // For now, we'll show all nodes in the filter dialog, but the actual filtering happens in the main component
+      // This could be enhanced to also filter in the dialog if we pass entryFlow data here
+    }
+    
+    const filtered = availableNodes.filter((node) => 
+      node.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     return {
       modelNodes: filtered.filter((node) => node.type === 'model'),
       toolNodes: filtered.filter((node) => node.type === 'tool'),
     };
-  }, [agentDetails?.AgentNodes, searchQuery]);
+  }, [agentDetails?.AgentNodes, searchQuery, user?.company?.showTrackedNodesOnly]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -287,6 +301,7 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
   const entryLog = params.get('entryLog');
   const dispatch = useDispatch();
   const [filteredNode, setFilteredNode] = React.useState(null);
+  const { user } = useUser();
   // Read nodeId and nodeType from URL
   const nodeId = params.get('nodeId');
   const nodeType = params.get('nodeType');
@@ -349,7 +364,20 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
       return { nodes: [], edges: [] };
     }
 
-    const nodes = agentDetails.AgentNodes.map((node) => {
+    // Check if company has showTrackedNodesOnly enabled
+    const showTrackedNodesOnly = user?.company?.showTrackedNodesOnly || false;
+
+    // Filter nodes based on company setting
+    const availableNodes = showTrackedNodesOnly 
+      ? agentDetails.AgentNodes.filter((node) => {
+          // Only show nodes that have execution steps in the current entry flow
+          return entryFlow?.steps?.some((step) => 
+            (step.mappingnodeid ? step.mappingnodeid : step.nodeId) === node.id
+          );
+        })
+      : agentDetails.AgentNodes;
+
+    const nodes = availableNodes.map((node) => {
       const steps = entryFlow?.steps?.filter((s) => (s.mappingnodeid ? s.mappingnodeid : s.nodeId) === node.id);
       const sequence = [];
 
@@ -436,8 +464,8 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
       targetHandle: conn.inputName || 'input',
     }));
 
-    return { nodes, edges };
-  }, [agentDetails, entryFlow]);
+    return { nodes, edges     };
+  }, [agentDetails, entryFlow, user?.company?.showTrackedNodesOnly]);
 
   const tabs = [
     {
