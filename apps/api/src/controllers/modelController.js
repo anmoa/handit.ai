@@ -1,6 +1,6 @@
 import db from '../../models/index.js';
 
-const { Model, ModelGroup } = db;
+const { Model, ModelGroup, AgentNode, Agent } = db;
 
 
 export const createModel = async (req, res) => {
@@ -95,11 +95,33 @@ export const deleteModel = async (req, res) => {
 export const me = async (req, res) => {
   const { userObject } = req;
   const { companyId } = userObject;
-  const modelGroups = await ModelGroup.findAll({ where: { companyId } });
+  
+  // First, get model groups that have models associated with agent nodes of the company
+  const modelGroups = await ModelGroup.findAll({
+    where: { companyId },
+    include: [{
+      model: Model,
+      as: 'Models',
+      required: true, // This ensures we only get model groups that have models
+      include: [{
+        model: AgentNode,
+        as: 'AgentNodes',
+        required: true, // This ensures we only get models that have agent nodes
+        include: [{
+          model: Agent,
+          as: 'Agent',
+          required: true, // This ensures we only get agent nodes that belong to agents of this company
+          where: { companyId }
+        }]
+      }]
+    }]
+  });
+
   const modelGroupsIds = modelGroups.map(modelGroup => modelGroup.id);
   if (!modelGroupsIds.length) {
     return res.status(200).json([]);
   }
+  
   // send models with datasets
   const models = await Model.findAll({ where: { modelGroupId: modelGroupsIds, isReviewer: false }, include: 'datasets', order: [['createdAt', 'ASC']] });
 
