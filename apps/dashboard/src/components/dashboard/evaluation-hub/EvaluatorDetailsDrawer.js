@@ -462,6 +462,7 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
             <Stack spacing={2}>
               {associations.map((assoc) => {
                 const model = models.find(m => m.id === assoc.modelId);
+                if (!model) return null;
                 const provider = providers?.data?.find(p => p.id === assoc.providerId);
                 const token = tokens.find(t => t.id === assoc.tokenId);
                 const isEditingAssoc = editingAssocModelId === assoc.modelId;
