@@ -377,7 +377,14 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
         })
       : agentDetails.AgentNodes;
 
-    const nodes = availableNodes.map((node) => {
+    // Sort available nodes by their original position to maintain order
+    const sortedAvailableNodes = [...availableNodes].sort((a, b) => {
+      const aX = a.config?.position?.x || 0;
+      const bX = b.config?.position?.x || 0;
+      return aX - bX;
+    });
+
+    const nodes = sortedAvailableNodes.map((node, index) => {
       const steps = entryFlow?.steps?.filter((s) => (s.mappingnodeid ? s.mappingnodeid : s.nodeId) === node.id);
       const sequence = [];
 
@@ -432,10 +439,23 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
             label: conn || 'Output',
           }))
           : [{ id: 'output', label: 'Output' }];
+
+      // Calculate new position based on whether we're filtering nodes
+      let newPosition = node.config.position;
+      if (showTrackedNodesOnly) {
+        // Reposition nodes to be closer together
+        // Use a standard spacing of 300px between nodes
+        const nodeSpacing = 300;
+        newPosition = {
+          x: index * nodeSpacing,
+          y: node.config.position?.y || 0, // Keep original Y position
+        };
+      }
+
       return {
         id: node.id.toString(),
         type: 'custom',
-        position: node.config.position,
+        position: newPosition,
         data: {
           ...node,
           id: node.id,
@@ -456,13 +476,20 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
       };
     });
 
-    const edges = agentDetails.AgentConnections.map((conn) => ({
-      id: conn.id.toString(),
-      source: conn.from_node_id.toString(),
-      target: conn.to_node_id.toString(),
-      sourceHandle: conn.outputName || 'output',
-      targetHandle: conn.inputName || 'input',
-    }));
+    // Filter edges to only include connections between available nodes
+    const availableNodeIds = new Set(sortedAvailableNodes.map(node => node.id.toString()));
+    const edges = agentDetails.AgentConnections
+      .filter((conn) => 
+        availableNodeIds.has(conn.from_node_id.toString()) && 
+        availableNodeIds.has(conn.to_node_id.toString())
+      )
+      .map((conn) => ({
+        id: conn.id.toString(),
+        source: conn.from_node_id.toString(),
+        target: conn.to_node_id.toString(),
+        sourceHandle: conn.outputName || 'output',
+        targetHandle: conn.inputName || 'input',
+      }));
 
     return { nodes, edges     };
   }, [agentDetails, entryFlow, user?.company?.showTrackedNodesOnly]);
