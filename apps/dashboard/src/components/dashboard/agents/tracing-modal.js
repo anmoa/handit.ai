@@ -652,8 +652,13 @@ const NodeDetails = ({
   }, [step]);
 
 
-  const context = parseContext(step?.input, model);
-  const observation = step?.input?.previousSteps?.map((step) => step.observation).join('\n\n');
+  const context = parseContext(stepData?.input, model);
+  let observation = '';
+  if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Object) {
+    observation = Object.values(stepData?.input?.previousSteps)?.map((step) => step.observation).join('\n\n');
+  } else if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Array) {
+    observation = stepData?.input?.previousSteps?.map((step) => step.observation).join('\n\n');
+  }
 
   // Get all available steps for this node
   const steps = node?.data?.sequence || [];
@@ -693,8 +698,12 @@ const NodeDetails = ({
     if (!stepData) return null;
 
     const context = parseContext(stepData?.input, model);
-    const observation = stepData?.input?.previousSteps?.map((step) => step.observation).join('\n\n');
-    
+    let observation = '';
+    if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Object) {
+      observation = Object.values(stepData?.input?.previousSteps)?.map((step) => step.observation).join('\n\n');
+    } else if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Array) {
+      observation = stepData?.input?.previousSteps?.map((step) => step.observation).join('\n\n');
+    }
     const stepPrefix = stepIndex !== null ? `Step ${stepIndex + 1} - ` : '';
 
     return (
