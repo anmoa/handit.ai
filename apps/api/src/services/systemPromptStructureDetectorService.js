@@ -170,9 +170,11 @@ const findSystemPromptInData = (data) => {
     // Check common patterns
     const patterns = [
       { path: 'input.options.systemMessage', field: 'systemMessage', parentField: 'options' },
+      { path: 'input.options.systemPromptTemplate', field: 'systemPromptTemplate', parentField: 'options' },
+      { path: 'options.systemMessage', field: 'systemMessage', parentField: 'options' },
+      { path: 'options.systemPromptTemplate', field: 'systemPromptTemplate', parentField: 'options' },
       { path: 'systemMessage', field: 'systemMessage' },
       { path: 'systemPrompt', field: 'systemMessage' },
-      { path: 'options.systemMessage', field: 'systemMessage', parentField: 'options' },
       { path: 'prompt', field: 'prompt' },
       { path: 'system', field: 'system' }
     ];

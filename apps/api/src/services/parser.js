@@ -29,8 +29,8 @@ export const parseContext = (data, model = null) => {
   const systemMessages = [];
   
   const extractSystemContent = (item) => {
-    if (item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage || item?.input?.options?.systemPromptTemplate) {
-      systemMessages.push(item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage || item?.input?.options?.systemPromptTemplate);
+    if (item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage || item?.input?.options?.systemPromptTemplate || item?.options?.systemPromptTemplate) {
+      systemMessages.push(item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage || item?.input?.options?.systemPromptTemplate || item?.options?.systemPromptTemplate);
       return;
     }
     if (!item) return;
@@ -43,6 +43,12 @@ export const parseContext = (data, model = null) => {
       }
       if (item?.input?.options?.systemPromptTemplate) {
         systemMessages.push(item.input.options.systemPromptTemplate);
+      }
+      if (item?.options?.systemMessage) {
+        systemMessages.push(item.options.systemMessage);
+      }
+      if (item?.options?.systemPromptTemplate) {
+        systemMessages.push(item.options.systemPromptTemplate);
       }
       if (item.role === 'system' && item.content) {
         systemMessages.push(item.content);
