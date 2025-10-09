@@ -206,7 +206,7 @@ async function processToolMetrics(agentId) {
   });
 
   // Check if company is in test mode
-  const isTestMode = toolNodes[0]?.Agent?.Company?.testMode;
+  const isTestMode = toolNodes[0]?.Agent?.Company?.testMode || toolNodes[0]?.Agent?.tourAgent;
 
   if (isTestMode) {
     return generateMockToolMetrics(toolNodes);

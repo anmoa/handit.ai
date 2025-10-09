@@ -81,6 +81,25 @@ export function UserProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Expected
   }, []);
 
+  // Listen for user data changes (e.g., onboarding progress updates)
+  React.useEffect(() => {
+    const handleUserDataChanged = (event) => {
+      checkSession().then((userData) => {
+        console.log('User context: Session refreshed, new user data:', userData?.onboardingCurrentTour);
+      }).catch((err) => {
+        logger.error('Failed to refresh user session:', err);
+      });
+    };
+
+    // Add event listener
+    window.addEventListener('userDataChanged', handleUserDataChanged);
+
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('userDataChanged', handleUserDataChanged);
+    };
+  }, [checkSession]);
+
   // Provide context value to children
   return <UserContext.Provider value={{ ...state, checkSession }}>{children}</UserContext.Provider>;
 }

@@ -9,11 +9,15 @@ import { ArrowSquareOut as ArrowSquareOutIcon } from '@phosphor-icons/react/dist
 import { CaretDown as CaretDownIcon } from '@phosphor-icons/react/dist/ssr/CaretDown';
 import { CaretRight as CaretRightIcon } from '@phosphor-icons/react/dist/ssr/CaretRight';
 import { CaretLeft as CaretLeftIcon } from '@phosphor-icons/react';
+import { SignOut } from '@phosphor-icons/react/dist/ssr/SignOut';
 
 import { paths } from '@/paths';
 import { isNavItemActive } from '@/lib/is-nav-item-active';
 import { useSettings } from '@/hooks/use-settings';
 import { Logo } from '@/components/core/logo';
+import { useUser } from '@/hooks/use-user';
+import { authClient } from '@/lib/auth/custom/client';
+import { toast } from '@/components/core/toaster';
 
 import { icons } from '../nav-icons';
 import { WorkspacesSwitch } from '../workspaces-switch';
@@ -24,20 +28,73 @@ const logoColors = {
   light: { blend_in: 'dark', discrete: 'dark', evident: 'light' },
 };
 
-export function SideNav({ color = 'evident', items = [], open, setOpen }) {
+export function SideNav({ color = 'evident', items = [], open, setOpen, forceOpen = false }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { checkSession } = useUser();
   const {
     settings: { colorScheme = 'light' },
   } = useSettings();
   const styles = navColorStyles[colorScheme][color];
-  const navWidth = open ? '280px' : '84px';
+  
+  // State for tracking currently highlighted menu item during onboarding
+  const [highlightedMenuItem, setHighlightedMenuItem] = React.useState(null);
+  
+  // Listen for onboarding mouse targeting events
+  React.useEffect(() => {
+    const handleMouseTarget = (event) => {
+      setHighlightedMenuItem(event.detail.menuTitle);
+    };
 
-  // Hover handlers for auto-expand/collapse
+    const handleMouseLeave = () => {
+      setHighlightedMenuItem(null);
+    };
+
+    window.addEventListener('onboardingMouseTarget', handleMouseTarget);
+    window.addEventListener('onboardingMouseLeave', handleMouseLeave);
+    
+    return () => {
+      window.removeEventListener('onboardingMouseTarget', handleMouseTarget);
+      window.removeEventListener('onboardingMouseLeave', handleMouseLeave);
+    };
+  }, []);
+
+  // Handle sign out functionality
+  const handleSignOut = React.useCallback(async () => {
+    try {
+      const { error } = await authClient.signOut();
+
+      if (error) {
+        console.error('Sign out error', error);
+        toast.error('Something went wrong, unable to sign out');
+        return;
+      }
+
+      // Clear any onboarding state
+      localStorage.removeItem('onboardingState');
+      sessionStorage.clear();
+
+      // Force redirect to sign-in page
+      window.location.href = '/auth/custom/sign-in';
+
+    } catch (err) {
+      console.error('Sign out error', err);
+      toast.error('Something went wrong, unable to sign out');
+      // Even if sign out fails, redirect to sign-in page
+      window.location.href = '/auth/custom/sign-in';
+    }
+  }, []);
+  
+  // Force open during onboarding or use normal open state
+  const isOpen = forceOpen || open;
+  const navWidth = isOpen ? '280px' : '84px';
+
+  // Hover handlers for auto-expand/collapse (disabled when forced open)
   const handleMouseEnter = () => {
-    if (!open) setOpen(true);
+    if (!forceOpen && !open) setOpen(true);
   };
   const handleMouseLeave = () => {
-    if (open) setOpen(false);
+    if (!forceOpen && open) setOpen(false);
   };
 
   return (
@@ -62,7 +119,7 @@ export function SideNav({ color = 'evident', items = [], open, setOpen }) {
     >
       {/* No toggle button, just hover to expand/collapse */}
       <Stack spacing={2} sx={{ p: 2, minHeight: 0, pl: '14px' }}>
-        {pathname !== '/smart-review-tool' && (open ? (
+        {pathname !== '/smart-review-tool' && (isOpen ? (
           <WorkspacesSwitch />
         ) : <WorkspacesSwitch onlyIcon />)}
       </Stack>
@@ -76,13 +133,59 @@ export function SideNav({ color = 'evident', items = [], open, setOpen }) {
           '&::-webkit-scrollbar': { display: 'none' },
         }}
       >
-        {renderNavGroups({ items, pathname, open })}
+        {renderNavGroups({ items, pathname, open: isOpen, highlightedMenuItem })}
+      </Box>
+
+      {/* Sign Out Button */}
+      <Box sx={{ p: 2, borderTop: '1px solid var(--SideNav-border)' }}>
+        <Box
+          onClick={handleSignOut}
+          sx={{
+            alignItems: 'center',
+            borderRadius: 1,
+            color: 'var(--NavItem-color)',
+            cursor: 'pointer',
+            display: 'flex',
+            flex: '0 0 auto',
+            gap: 1,
+            p: '6px 16px',
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+            '&:hover': {
+              bgcolor: 'var(--NavItem-hover-background)',
+              color: 'var(--NavItem-hover-color)',
+            },
+          }}
+          tabIndex={0}
+        >
+          <Box sx={{ alignItems: 'center', display: 'flex', justifyContent: 'center', flex: '0 0 auto' }}>
+            <SignOut
+              fill="var(--NavItem-color)"
+              fontSize="var(--icon-fontSize-md)"
+            />
+          </Box>
+          {isOpen && (
+            <Box sx={{ flex: '1 1 auto' }}>
+              <Typography
+                component="span"
+                sx={{ 
+                  color: 'inherit', 
+                  fontSize: '0.875rem', 
+                  fontWeight: 500, 
+                  lineHeight: '28px' 
+                }}
+              >
+                Sign Out
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
     </Box>
   );
 }
 
-function renderNavGroups({ items, pathname, open }) {
+function renderNavGroups({ items, pathname, open, highlightedMenuItem }) {
   const children = items.reduce((acc, curr) => {
     acc.push(
       <Stack component="li" key={curr.key} spacing={1.5}>
@@ -94,7 +197,7 @@ function renderNavGroups({ items, pathname, open }) {
             </Typography>
           </div>
         ) : null}
-        <div>{renderNavItems({ depth: 0, items: curr.items, pathname, open })}</div>
+        <div>{renderNavItems({ depth: 0, items: curr.items, pathname, open, highlightedMenuItem })}</div>
       </Stack>
     );
     return acc;
@@ -106,15 +209,23 @@ function renderNavGroups({ items, pathname, open }) {
   );
 }
 
-function renderNavItems({ depth = 0, items = [], pathname, open }) {
+function renderNavItems({ depth = 0, items = [], pathname, open, highlightedMenuItem }) {
   const children = items.reduce((acc, curr) => {
     const { items: childItems, key, ...item } = curr;
     const forceOpen = childItems
       ? Boolean(childItems.find((childItem) => childItem.href && pathname.startsWith(childItem.href)))
       : false;
     acc.push(
-      <NavItem depth={depth} forceOpen={forceOpen} key={key} pathname={pathname} open={open} {...item}>
-        {childItems ? renderNavItems({ depth: depth + 1, pathname, items: childItems, open }) : null}
+      <NavItem 
+        depth={depth} 
+        forceOpen={forceOpen} 
+        key={key} 
+        pathname={pathname} 
+        open={open} 
+        highlightedMenuItem={highlightedMenuItem}
+        {...item}
+      >
+        {childItems ? renderNavItems({ depth: depth + 1, pathname, items: childItems, open, highlightedMenuItem }) : null}
       </NavItem>
     );
     return acc;
@@ -139,6 +250,8 @@ function NavItem({
   pathname,
   title,
   open: navOpen,
+  highlightedMenuItem,
+  onboardingTrigger,
 }) {
   const [open, setOpen] = React.useState(forceOpen);
   const [modelId, setModelId] = React.useState(null);
@@ -148,6 +261,10 @@ function NavItem({
   const isBranch = children && !href;
   const showChildren = Boolean(children && open);
   const searchParams = useSearchParams();
+  
+  // Check if this menu item is currently being targeted by the onboarding mouse
+  const isHighlighted = highlightedMenuItem === title;
+  
   React.useEffect(() => {
     // Get the 'modelId' from the current search parameters
     const newModelId = searchParams.get('modelId');
@@ -156,6 +273,7 @@ function NavItem({
       setModelId(newModelId);
     }
   }, [searchParams, modelId]);
+  
   return (
     <Box component="li" data-depth={depth} sx={{ userSelect: 'none' }}>
       <Box
@@ -172,14 +290,28 @@ function NavItem({
               role: 'button',
             }
           : {
-              ...(href
+              ...(onboardingTrigger
                 ? {
-                    component: external ? 'a' : RouterLink,
-                    href: href + (href === '/dynamic-review' && modelId !== null ? '?modelId=' + modelId : ''),
-                    target: external ? '_blank' : undefined,
-                    rel: external ? 'noreferrer' : undefined,
+                    onClick: () => {
+                      window.dispatchEvent(new CustomEvent('openOnboardingMenu'));
+                    },
+                    onKeyUp: (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        window.dispatchEvent(new CustomEvent('openOnboardingMenu'));
+                      }
+                    },
+                    role: 'button',
                   }
-                : { role: 'button' }),
+                : href
+                  ? {
+                      component: external ? 'a' : RouterLink,
+                      href: href + (href === '/dynamic-review' && modelId !== null ? '?modelId=' + modelId : ''),
+                      target: external ? '_blank' : undefined,
+                      rel: external ? 'noreferrer' : undefined,
+                      'data-nav-item': title,
+                      'data-href': href,
+                    }
+                  : { role: 'button' }),
             })}
         sx={{
           alignItems: 'center',
@@ -213,10 +345,23 @@ function NavItem({
               },
             }),
           }),
+          // Temporary highlighting when mouse is targeting this item
+          ...(isHighlighted && !active && {
+            bgcolor: '#1976d2',
+            color: 'white',
+            '&:hover': {
+              bgcolor: '#1565c0',
+              color: 'white',
+            },
+          }),
           ...(open && { color: 'var(--NavItem-open-color)' }),
           '&:hover': {
             ...(!disabled &&
-              !active && { bgcolor: 'var(--NavItem-hover-background)', color: 'var(--NavItem-hover-color)' }),
+              !active && 
+              !isHighlighted && { 
+                bgcolor: 'var(--NavItem-hover-background)', 
+                color: 'var(--NavItem-hover-color)' 
+              }),
           },
         }}
         tabIndex={0}
@@ -224,9 +369,15 @@ function NavItem({
         <Box sx={{ alignItems: 'center', display: 'flex', justifyContent: 'center', flex: '0 0 auto' }}>
           {Icon ? (
             <Icon
-              fill={active ? 'var(--NavItem-active-color)' : 'var(--NavItem-color)'}
+              fill={
+                isHighlighted && !active 
+                  ? 'white' 
+                  : active 
+                    ? 'var(--NavItem-active-color)' 
+                    : 'var(--NavItem-color)'
+              }
               fontSize="var(--icon-fontSize-md)"
-              weight={forceOpen || active ? 'fill' : undefined}
+              weight={forceOpen || active || isHighlighted ? 'fill' : undefined}
             />
           ) : null}
         </Box>
@@ -234,7 +385,12 @@ function NavItem({
           <Box sx={{ flex: '1 1 auto' }}>
             {pathname !== '/smart-review-tool' && <Typography
               component="span"
-              sx={{ color: navOpen ? 'inherit' : 'transparent', fontSize: '0.875rem', fontWeight: 500, lineHeight: '28px' }}
+              sx={{ 
+                color: navOpen ? 'inherit' : 'transparent', 
+                fontSize: '0.875rem', 
+                fontWeight: isHighlighted ? 600 : 500, 
+                lineHeight: '28px' 
+              }}
             >
               {title}
             </Typography>}

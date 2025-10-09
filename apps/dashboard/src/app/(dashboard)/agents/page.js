@@ -14,7 +14,8 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { useGetAgentsQuery, useCloneAgentMutation, useUploadAgentMutation } from '@/services/agentsService';
+import { useCloneAgentMutation, useGetAgentsQuery, useUploadAgentMutation } from '@/services/agentsService';
+import { useOnboardingAgents } from '@/hooks/use-onboarding-agents';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -79,7 +80,7 @@ export default function Page() {
   const router = useRouter();
 
   // RTK Query hooks for data fetching and mutations
-  const { data: agents, isLoading } = useGetAgentsQuery();
+  const { data: agents = [] } = useGetAgentsQuery({});
   const [cloneAgent] = useCloneAgentMutation();
   const [uploadAgent] = useUploadAgentMutation();
 

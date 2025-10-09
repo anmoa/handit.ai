@@ -133,6 +133,7 @@ function NavItem({
   onClose,
   pathname,
   title,
+  onboardingTrigger,
 }) {
   const [open, setOpen] = React.useState(forceOpen);
   const active = isNavItemActive({ disabled, external, href, matcher, pathname });
@@ -157,17 +158,31 @@ function NavItem({
               role: 'button',
             }
           : {
-              ...(href
+              ...(onboardingTrigger
                 ? {
-                    component: external ? 'a' : RouterLink,
-                    href,
-                    target: external ? '_blank' : undefined,
-                    rel: external ? 'noreferrer' : undefined,
                     onClick: () => {
+                      window.dispatchEvent(new CustomEvent('openOnboardingMenu'));
                       onClose?.();
                     },
+                    onKeyUp: (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        window.dispatchEvent(new CustomEvent('openOnboardingMenu'));
+                        onClose?.();
+                      }
+                    },
+                    role: 'button',
                   }
-                : { role: 'button' }),
+                : href
+                  ? {
+                      component: external ? 'a' : RouterLink,
+                      href,
+                      target: external ? '_blank' : undefined,
+                      rel: external ? 'noreferrer' : undefined,
+                      onClick: () => {
+                        onClose?.();
+                      },
+                    }
+                  : { role: 'button' }),
             })}
         sx={{
           alignItems: 'center',

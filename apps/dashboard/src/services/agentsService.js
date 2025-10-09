@@ -47,9 +47,12 @@ export const agentsApi = createApi({
      * @type {QueryEndpoint}
      */
     getAgents: builder.query({
-      query: () => ({
+      query: ({ tourAgent = false } = {}) => ({
         url: 'agents',
-        params: getEnvironmentParams(),
+        params: {
+          ...getEnvironmentParams(),
+          ...(tourAgent && { tourAgent: 'true' }),
+        },
       }),
       providesTags: ['agents'],
     }),

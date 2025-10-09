@@ -1,6 +1,7 @@
 'use strict';
 import { Model } from 'sequelize';
 import bcrypt from 'bcryptjs';
+import { sendWelcomeHanditEmail } from '../src/services/emailService.js';
 
 export default (sequelize, DataTypes) => {
   class User extends Model {
@@ -27,6 +28,12 @@ export default (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: false,
       field: 'test_mode'
+    },
+    userType: {
+      type: DataTypes.ENUM('regular', 'testing', 'admin'),
+      allowNull: false,
+      defaultValue: 'regular',
+      field: 'user_type'
     },
     lastName: {
       type: DataTypes.STRING,
@@ -84,6 +91,27 @@ export default (sequelize, DataTypes) => {
         key: 'id'
       }
     },
+    onboardingCurrentTour: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'onboarding_current_tour'
+    },
+    githubUserId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+      field: 'github_user_id'
+    },
+    githubUsername: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'github_username'
+    },
+    oauthProvider: {
+      type: DataTypes.ENUM('github', 'google', 'microsoft'),
+      allowNull: true,
+      field: 'oauth_provider'
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -99,6 +127,29 @@ export default (sequelize, DataTypes) => {
     modelName: 'User',
     timestamps: true,
     paranoid: true,
+    hooks: {
+      afterCreate: async (user, options) => {
+        try {
+          // Get the Email and User models from the sequelize instance
+          const { Email, User } = sequelize.models;
+          
+          // Send welcome email
+          await sendWelcomeHanditEmail({
+            recipientEmail: user.email,
+            firstName: user.firstName,
+            Email,
+            User,
+            notificationSource: 'user_creation',
+            sourceId: user.id
+          });
+          
+          console.log(`Welcome email sent to ${user.email} after user creation`);
+        } catch (error) {
+          console.error('Error sending welcome email after user creation:', error);
+          // Don't throw the error to avoid breaking the user creation process
+        }
+      }
+    }
   });
   return User;
 };

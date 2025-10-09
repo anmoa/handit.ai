@@ -12,6 +12,11 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from '@mui/material';
 import { X, PencilSimple, Plus, ArrowsOutSimple, Code, Check } from '@phosphor-icons/react/dist/ssr';
 import { DotsThree as DotsThreeIcon } from '@phosphor-icons/react/dist/ssr/DotsThree';
@@ -50,6 +55,17 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
   const [newTokenValue, setNewTokenValue] = useState('');
   const [tokenModelId, setTokenModelId] = useState(null);
   const [tokenProviderId, setTokenProviderId] = useState(null);
+  
+  // Token form state (similar to settings)
+  const [tokenForm, setTokenForm] = useState({
+    providerId: '',
+    name: '',
+    token: '',
+    accessKeyId: '',
+    secretAccessKey: '',
+    region: '',
+    authMethod: 'apiKey'
+  });
   const [creatingMetric, setCreatingMetric] = useState(false);
   const [creatingToken, setCreatingToken] = useState(false);
   const [isEditingPrompt, setIsEditingPrompt] = useState(false);
@@ -106,6 +122,7 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
       setNewTokenValue('');
       setTokenModelId(null);
       setTokenProviderId(null);
+      setTokenForm({ providerId: '', name: '', token: '', accessKeyId: '', secretAccessKey: '', region: '', authMethod: 'apiKey' });
       setCreatingMetric(false);
       setCreatingToken(false);
       setIsEditingPrompt(false);
@@ -138,6 +155,7 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
       setNewTokenValue('');
       setTokenModelId(null);
       setTokenProviderId(null);
+      setTokenForm({ providerId: '', name: '', token: '', accessKeyId: '', secretAccessKey: '', region: '', authMethod: 'apiKey' });
       setCreatingMetric(false);
       setCreatingToken(false);
       setIsEditingPrompt(false);
@@ -167,18 +185,92 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
     return passesBaseFilters && agentModelIds.includes(m.id);
   });
 
+  // Check if the selected provider is AWSBedrock
+  const isAWSBedrock = () => {
+    const selectedProvider = providers?.data?.find(p => p.id === tokenForm.providerId);
+    return selectedProvider?.name === 'AWSBedrock';
+  };
+
+  // Token form handlers (similar to settings)
+  const handleTokenFormChange = (field, value) => {
+    setTokenForm(prev => ({ ...prev, [field]: value }));
+    // Clear AWS fields when switching away from AWSBedrock
+    if (field === 'providerId') {
+      const selectedProvider = providers?.data?.find(p => p.id === value);
+      if (selectedProvider?.name !== 'AWSBedrock') {
+        setTokenForm(prev => ({ ...prev, accessKeyId: '', secretAccessKey: '', region: '', authMethod: 'apiKey' }));
+      } else {
+        setTokenForm(prev => ({ ...prev, token: '' }));
+      }
+    }
+    // Clear fields when switching auth method
+    if (field === 'authMethod') {
+      if (value === 'apiKey') {
+        setTokenForm(prev => ({ ...prev, accessKeyId: '', secretAccessKey: '', region: '' }));
+      } else {
+        setTokenForm(prev => ({ ...prev, token: '' }));
+      }
+    }
+  };
+
+  const handleCloseTokenDialog = () => {
+    setTokenDialogOpen(false);
+    setTokenForm({ providerId: '', name: '', token: '', accessKeyId: '', secretAccessKey: '', region: '', authMethod: 'apiKey' });
+  };
+
+  // Helper function to extract AWS credentials from token data
+  const extractAWSCredentials = (token) => {
+    if (token && token.data && token.data.accessKeyId && token.data.secretAccessKey && token.data.region) {
+      return {
+        accessKeyId: token.data.accessKeyId,
+        secretAccessKey: token.data.secretAccessKey,
+        region: token.data.region
+      };
+    }
+    return { accessKeyId: '', secretAccessKey: '', region: '' };
+  };
+
   // ... (reuse the same association logic as in NewEvaluatorDrawer) ...
 
   // Add handleCreateToken logic
   const handleCreateToken = async () => {
-    if (!newTokenName || !newTokenValue || !tokenProviderId) return;
+    const selectedProvider = providers?.data?.find(p => p.id === tokenForm.providerId);
+    const isAWSProvider = selectedProvider?.name === 'AWSBedrock';
+    
+    // Validate required fields based on provider type and auth method
+    if (!tokenForm.name || !tokenForm.providerId) return;
+    if (isAWSProvider && tokenForm.authMethod === 'awsCredentials' && (!tokenForm.accessKeyId || !tokenForm.secretAccessKey || !tokenForm.region)) return;
+    if ((isAWSProvider && tokenForm.authMethod === 'apiKey' && !tokenForm.token) || (!isAWSProvider && !tokenForm.token)) return;
+    
     setCreatingToken(true);
     try {
-      const token = await createToken({
-        name: newTokenName,
-        token: newTokenValue,
-        providerId: tokenProviderId,
-      }).unwrap();
+      const tokenData = {
+        name: tokenForm.name,
+        providerId: tokenForm.providerId,
+        authMethod: tokenForm.authMethod,
+      };
+      
+      if (isAWSProvider && tokenForm.authMethod === 'awsCredentials') {
+        tokenData.accessKeyId = tokenForm.accessKeyId;
+        tokenData.secretAccessKey = tokenForm.secretAccessKey;
+        tokenData.region = tokenForm.region;
+      } else {
+        tokenData.token = tokenForm.token;
+      }
+      
+      const token = await createToken(tokenData).unwrap();
+      
+      // Find the provider and get the first available model
+      const selectedProvider = providers?.data?.find(p => p.id === tokenForm.providerId);
+      const firstModel = selectedProvider?.config?.models?.[0];
+      
+      // Set the newly created token as the default token along with provider and first model
+      setDefaultTokenId(token.id);
+      setDefaultProviderId(tokenForm.providerId);
+      if (firstModel) {
+        setDefaultProviderModel(firstModel);
+      }
+      
       // If adding a new association
       if (addAssocOpen && tokenModelId) {
         setAssocTokenId(token.id);
@@ -187,11 +279,8 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
       if (editingAssocModelId && tokenModelId === editingAssocModelId) {
         setEditTokenId(token.id);
       }
-      setTokenDialogOpen(false);
-      setNewTokenName('');
-      setNewTokenValue('');
-      setTokenModelId(null);
-      setTokenProviderId(null);
+      
+      handleCloseTokenDialog();
     } finally {
       setCreatingToken(false);
     }
@@ -316,9 +405,20 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
         </Box>
         {/* Associations */}
         <Box>
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>
-            Default Provider, Model & Token
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="subtitle1">
+              Default Provider, Model & Token
+            </Typography>
+            <Button
+              startIcon={<Plus />}
+              onClick={() => setTokenDialogOpen(true)}
+              size="small"
+              variant="outlined"
+              data-testid="add-token-button"
+            >
+              Add Token
+            </Button>
+          </Box>
           <Stack direction="row" spacing={2}>
             <TextField
               select
@@ -368,7 +468,7 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
           </Typography>
           <Button
               onClick={() => setAddAssocOpen(true)}
-              disabled={availableModels.length === 0}
+              data-testid="associate-new-llm-node-button"
             >
               Associate New LLM Node
             </Button>
@@ -382,6 +482,7 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
             <Stack spacing={2}>
               {associations.map((assoc) => {
                 const model = models.find(m => m.id === assoc.modelId);
+                if (!model) return null;
                 const provider = providers?.data?.find(p => p.id === assoc.providerId);
                 const token = tokens.find(t => t.id === assoc.tokenId);
                 const isEditingAssoc = editingAssocModelId === assoc.modelId;
@@ -577,7 +678,8 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
                       setAssocAgentId('');
                     }}
                     variant="contained"
-                    disabled={!assocAgentId || !assocModelId}
+                    disabled={!assocModelId}
+                    data-testid="save-association-button"
                     sx={{
                       backgroundImage: 'none',
                       backgroundColor: 'primary.main',
@@ -639,27 +741,92 @@ export default function EvaluatorDetailsDrawer({ open, onClose, evaluator, onUpd
             </Button>
         )}
       </Stack>
-      <Dialog open={tokenDialogOpen} onClose={() => setTokenDialogOpen(false)}>
-        <DialogTitle>Create New Token</DialogTitle>
+      <Dialog open={tokenDialogOpen} onClose={handleCloseTokenDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Add Token</DialogTitle>
         <DialogContent>
-          <TextField
-            label="Token Name"
-            value={newTokenName}
-            onChange={e => setNewTokenName(e.target.value)}
-            fullWidth
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="Token Value"
-            value={newTokenValue}
-            onChange={e => setNewTokenValue(e.target.value)}
-            fullWidth
-          />
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField 
+              select 
+              label="Provider" 
+              value={tokenForm.providerId} 
+              onChange={e => handleTokenFormChange('providerId', e.target.value)} 
+              fullWidth
+            >
+              {providers?.data?.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
+            </TextField>
+            <TextField 
+              label="Name" 
+              value={tokenForm.name} 
+              onChange={e => handleTokenFormChange('name', e.target.value)} 
+              fullWidth 
+            />
+            {isAWSBedrock() ? (
+              <>
+                <FormControl component="fieldset">
+                  <FormLabel component="legend">Authentication Method</FormLabel>
+                  <RadioGroup value={tokenForm.authMethod} onChange={e => handleTokenFormChange('authMethod', e.target.value)}>
+                    <FormControlLabel value="apiKey" control={<Radio />} label="API Key" />
+                    <FormControlLabel value="awsCredentials" control={<Radio />} label="AWS Credentials (Access Key ID + Secret)" />
+                  </RadioGroup>
+                </FormControl>
+                {tokenForm.authMethod === 'apiKey' ? (
+                  <TextField 
+                    label="API Key" 
+                    value={tokenForm.token} 
+                    onChange={e => handleTokenFormChange('token', e.target.value)} 
+                    fullWidth 
+                  />
+                ) : (
+                  <>
+                    <TextField 
+                      label="Access Key ID" 
+                      value={tokenForm.accessKeyId} 
+                      onChange={e => handleTokenFormChange('accessKeyId', e.target.value)} 
+                      fullWidth 
+                    />
+                    <TextField 
+                      label="Secret Access Key" 
+                      value={tokenForm.secretAccessKey} 
+                      onChange={e => handleTokenFormChange('secretAccessKey', e.target.value)} 
+                      fullWidth 
+                      type="password"
+                    />
+                    <TextField 
+                      label="Region" 
+                      value={tokenForm.region} 
+                      onChange={e => handleTokenFormChange('region', e.target.value)} 
+                      fullWidth 
+                      placeholder="e.g., us-east-1"
+                    />
+                  </>
+                )}
+              </>
+            ) : (
+              <TextField 
+                label="Token" 
+                value={tokenForm.token} 
+                onChange={e => handleTokenFormChange('token', e.target.value)} 
+                fullWidth 
+              />
+            )}
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTokenDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleCreateToken} disabled={!newTokenName || !newTokenValue || creatingToken} variant="contained">
-            {creatingToken ? 'Creating...' : 'Create'}
+          <Button onClick={handleCloseTokenDialog}>Cancel</Button>
+          <Button 
+            onClick={handleCreateToken} 
+            disabled={
+              !tokenForm.name || 
+              !tokenForm.providerId || 
+              creatingToken ||
+              (isAWSBedrock() && tokenForm.authMethod === 'awsCredentials' && (!tokenForm.accessKeyId || !tokenForm.secretAccessKey || !tokenForm.region)) ||
+              (isAWSBedrock() && tokenForm.authMethod === 'apiKey' && !tokenForm.token) ||
+              (!isAWSBedrock() && !tokenForm.token)
+            } 
+            variant="outlined"
+            data-testid="save-token-button"
+          >
+            {creatingToken ? 'Creating...' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>

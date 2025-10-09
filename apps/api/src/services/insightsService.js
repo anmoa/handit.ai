@@ -28,6 +28,7 @@ export const runReview = async (
   version = null,
   modelId = null,
   optimizationToken = null,
+  optimizationTokenData = null,
   optimizationProvider = null,
   optimizationModel = null
 ) => {
@@ -39,6 +40,7 @@ export const runReview = async (
     [],
     problemType,
     optimizationToken,
+    optimizationTokenData,
     optimizationProvider,
     optimizationModel
   );
@@ -61,6 +63,7 @@ export const reviewEntry = async (
   oldInsights,
   problemType = 'text_generation',
   optimizationToken = null,
+  optimizationTokenData = null,
   optimizationProvider = null,
   optimizationModel = null
 ) => {
@@ -178,6 +181,7 @@ Provide your final answer in **English** and follow the structured format above,
     responseFormat: ListOfReviews,
     numberOfAttachments: imageAttachments.length,
     token: optimizationToken,
+    tokenData: optimizationTokenData,
     provider: optimizationProvider,
     model: optimizationModel,
   });

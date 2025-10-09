@@ -25,7 +25,6 @@ export function AgentSwitch({ onAgentChange, agentId, agents }) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedAgent, setSelectedAgent] = React.useState(null);
-  const path = usePathname();
 
   React.useEffect(() => {
     if (agents && !agentId) {

@@ -10,6 +10,16 @@ export default (sequelize, DataTypes) => {
       EvaluationPrompt.belongsTo(models.EvaluatorMetric, { foreignKey: 'metricId', as: 'metric' });
       EvaluationPrompt.belongsTo(models.IntegrationToken, { foreignKey: 'defaultIntegrationTokenId', as: 'defaultIntegrationToken' });
     }
+
+    // Validate that either prompt or function_body is provided based on type
+    validatePromptOrFunction() {
+      if (this.type === 'prompt' && !this.prompt) {
+        throw new Error('Prompt is required when type is "prompt"');
+      }
+      if (this.type === 'function' && !this.functionBody) {
+        throw new Error('Function body is required when type is "function"');
+      }
+    }
   }
   EvaluationPrompt.init({
     id: {
@@ -22,9 +32,25 @@ export default (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    type: {
+      type: DataTypes.ENUM('prompt', 'function'),
+      allowNull: false,
+      defaultValue: 'prompt',
+    },
+    isInformative: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'is_informative',
+    },
     prompt: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true, // Now nullable since function evaluators won't use it
+    },
+    functionBody: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'function_body',
     },
     metricId: {
       type: DataTypes.INTEGER,
@@ -72,6 +98,17 @@ export default (sequelize, DataTypes) => {
     tableName: 'EvaluationPrompts',
     timestamps: true,
     underscored: true,
+    hooks: {
+      beforeValidate: function(instance) {
+        instance.validatePromptOrFunction();
+      },
+      beforeCreate: function(instance) {
+        instance.validatePromptOrFunction();
+      },
+      beforeUpdate: function(instance) {
+        instance.validatePromptOrFunction();
+      },
+    },
   });
   return EvaluationPrompt;
 }; 

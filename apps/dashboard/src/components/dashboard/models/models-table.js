@@ -415,7 +415,7 @@ export function ModelsTable({ onModelSelect, height = '28vh' }) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredModels.slice(0, visibleCount).map((model) => {
+                {filteredModels.slice(0, visibleCount).map((model, index) => {
                   // Get all metrics for this model
                   const metricsByModel = agent?.data?.modelMetrics?.metricsByModel || {};
                   const modelMetrics = metricsByModel[model.modelId] || {};
@@ -447,6 +447,7 @@ export function ModelsTable({ onModelSelect, height = '28vh' }) {
                         cursor: 'pointer',
                         '& td': { py: 1 }
                       }}
+                      data-testid={index === 0 ? 'improvement-row-first' : 'llm-node-not-first'}
                     >
                       {/* Name & Description */}
                       <TableCell>

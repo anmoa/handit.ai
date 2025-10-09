@@ -12,6 +12,7 @@
 'use client';
 
 import * as React from 'react';
+import { useSearchParams } from 'next/navigation';
 import Box from '@mui/material/Box';
 import { EvaluationHubTable } from '@/components/dashboard/evaluation-hub/evaluation-hub-table';
 import NewEvaluatorDrawer from '@/components/dashboard/evaluation-hub/NewEvaluatorDrawer';
@@ -29,16 +30,42 @@ import { useCreateEvaluationPromptMutation } from '@/services/reviewersTemplateS
  * - Consistent layout with other dashboard pages
  * - Proper spacing and padding
  * - Container for the evaluation hub table
+ * - URL parameter handling for automatic chat opening
  */
 export default function EvaluationHubPage() {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [createEvaluationPrompt] = useCreateEvaluationPromptMutation();
+  const searchParams = useSearchParams();
 
   React.useEffect(() => {
     const handler = () => setDrawerOpen(true);
     window.addEventListener('openNewEvaluator', handler);
     return () => window.removeEventListener('openNewEvaluator', handler);
   }, []);
+
+  // Handle URL parameters for automatic chat opening
+  React.useEffect(() => {
+    const openChat = searchParams.get('openChat');
+    const message = searchParams.get('message');
+    
+    if (openChat === 'true') {
+      // Dispatch event to open onboarding chat with specific message
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('openOnboardingChat', { 
+        detail: { 
+          mode: 'assistant', 
+          message: message || 'I want to connect evaluators' 
+        } 
+      }));
+    }, 1000);
+      
+      // Clean up URL parameters
+      const url = new URL(window.location.href);
+      url.searchParams.delete('openChat');
+      url.searchParams.delete('message');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams]);
 
   const handleOpenDrawer = () => setDrawerOpen(true);
   const handleCloseDrawer = () => setDrawerOpen(false);

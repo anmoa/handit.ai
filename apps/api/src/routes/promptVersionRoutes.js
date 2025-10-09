@@ -14,6 +14,7 @@ import {
   getInsightsOfVersion,
   getAgentByIdFunction,
   getModelOptimizationStatus,
+  optimizePromptFromError,
 } from '../controllers/promptVersionController.js';
 
 /**
@@ -97,6 +98,17 @@ router.get('/model/:modelId/prompts', getAllPromptVersions);
  * @desc    Get insights for a specific prompt version (fallback to model if none for version)
  */
 router.get('/model/:modelId/prompt/:version/insights', getInsightsOfVersion);
+
+/**
+ * @route   POST /model/:modelId/prompt/optimize-from-error
+ * @desc    Optimize a prompt based on a specific modelLog error
+ * @params  modelId (path) - ID of the model
+ * @body    { modelLogId: number } - ID of the modelLog that contains the error
+ * @returns {200} - { success: true, data: { newPrompt, insights } }
+ *          {400} - { success: false, message: 'Invalid modelLogId or no error found' }
+ *          {404} - { success: false, message: 'Model or modelLog not found' }
+ */
+router.post('/model/:modelId/prompt/optimize-from-error', optimizePromptFromError);
 
 export default router; 
 

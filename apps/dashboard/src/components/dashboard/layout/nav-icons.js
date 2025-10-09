@@ -1,4 +1,4 @@
-import { ChartLineUp, Circuitry, Gauge, Graph, Plugs, RocketLaunch, TestTubes } from '@phosphor-icons/react';
+import { ChartLineUp, Circuitry, Gauge, Graph, Plugs, RocketLaunch } from '@phosphor-icons/react';
 import { Check, CheckSquareOffset, CloudCheck, CodesandboxLogo } from '@phosphor-icons/react/dist/ssr';
 import { AddressBook as AddressBookIcon } from '@phosphor-icons/react/dist/ssr/AddressBook';
 import { AlignLeft as AlignLeftIcon } from '@phosphor-icons/react/dist/ssr/AlignLeft';
@@ -29,6 +29,7 @@ import { Truck as TruckIcon } from '@phosphor-icons/react/dist/ssr/Truck';
 import { Upload as UploadIcon } from '@phosphor-icons/react/dist/ssr/Upload';
 import { Users as UsersIcon } from '@phosphor-icons/react/dist/ssr/Users';
 import { WarningDiamond as WarningDiamondIcon } from '@phosphor-icons/react/dist/ssr/WarningDiamond';
+import { Question as QuestionIcon } from '@phosphor-icons/react/dist/ssr/Question';
 
 export const icons = {
   'address-book': AddressBookIcon,
@@ -69,5 +70,5 @@ export const icons = {
   upload: UploadIcon,
   gear: GearIcon,
   users: UsersIcon,
-  'test-tubes': TestTubes,
+  question: QuestionIcon,
 };

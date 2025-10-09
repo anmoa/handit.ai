@@ -1,0 +1,72 @@
+{
+  "name": "@handit.ai/onboarding",
+  "version": "1.0.0",
+  "description": "Interactive onboarding components and service for AI agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "prepublishOnly": "npm run build",
+    "test": "jest"
+  },
+  "keywords": [
+    "onboarding",
+    "react",
+    "ui",
+    "components",
+    "handit",
+    "ai-agents",
+    "guided-tour"
+  ],
+  "author": "Handit Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/handit/autonom.git",
+    "directory": "packages/@handit/onboarding"
+  },
+  "peerDependencies": {
+    "@mui/icons-material": ">=5.0.0",
+    "@mui/material": ">=5.0.0",
+    "@phosphor-icons/react": ">=2.0.0",
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "dependencies": {
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
+    "@babel/preset-react": "^7.27.1",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-terser": "^0.4.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "rollup": "^4.0.0",
+    "rollup-plugin-peer-deps-external": "^2.2.4",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/handit/autonom/issues"
+  },
+  "homepage": "https://github.com/handit/autonom#readme"
+}

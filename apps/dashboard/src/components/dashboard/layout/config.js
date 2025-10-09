@@ -20,12 +20,11 @@ export const layoutConfig = {
       title: 'General',
       items: [
         {
-          key: 'connect',
-          title: 'Docs',
-          href: 'https://docs.handit.ai/',
-          icon: 'connect',
+          key: 'onboarding-guide',
+          title: 'Need a guide?',
+          icon: 'question',
           disabled: false,
-          external: true,
+          onboardingTrigger: true,
         },
         {
           key: 'settings',

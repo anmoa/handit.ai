@@ -58,6 +58,7 @@ export default function PromptVersionsPage() {
   const [newPromptText, setNewPromptText] = React.useState('');
   const [createAndDeploy, setCreateAndDeploy] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [defaultRightVersion, setDefaultRightVersion] = React.useState(null);
 
   // RTK Query mutations and queries
   const [createPrompt, { isLoading: isCreating }] = useCreatePromptMutation();
@@ -82,6 +83,9 @@ export default function PromptVersionsPage() {
   // URL parameter handling
   const searchParams = useSearchParams();
   const agentId = searchParams.get('agentId');
+  const modelId = searchParams.get('modelId');
+  const promptVersion = searchParams.get('promptVersion');
+  const autoDeploy = searchParams.get('autoDeploy');
   const { data: agent, isLoading: isLoadingAgent } = useGetAgentByIdAutonomQuery(agentId, { skip: !agentId });
   const { data: agentCorrectEntries, isLoading: isLoadingCorrectEntries } = useGetAgentCorrectEntriesQuery(agentId, { skip: !agentId });
   const { data: modelOptStatus, isLoading: isLoadingModelOptStatus } = useGetModelOptimizationStatusQuery(agentId, { skip: !agentId });
@@ -268,6 +272,9 @@ export default function PromptVersionsPage() {
 
   // Handle model selection from URL parameters
   const modelIdParam = searchParams.get('modelId');
+  const autoOptimize = searchParams.get('autoOptimize');
+  const modelLogId = searchParams.get('modelLogId');
+  
   React.useEffect(() => {
     if (modelIdParam && agent?.data?.nodes) {
       const model = agent.data.nodes.find(n => n.modelId?.toString() === modelIdParam || n.id?.toString() === modelIdParam);
@@ -278,6 +285,129 @@ export default function PromptVersionsPage() {
     }
     // Only run when agent or modelIdParam changes
   }, [modelIdParam, agent]);
+
+  // Handle auto-optimize chat opening
+  React.useEffect(() => {
+
+    const urlModelId = searchParams.get('modelId');
+    if (autoOptimize === 'true' && urlModelId && modelLogId) {
+      // Open the OnboardingChat with a pre-filled message
+      const message = `I want to optimize the prompt of the model with id ${urlModelId}, based on the result of the entry with id ${modelLogId}`;
+      
+      // Dispatch event to open the chat (same pattern as main-nav.js)
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('openOnboardingChat', {
+          detail: {
+            mode: 'assistant',
+            message: message
+          }
+        }));
+      }, 1000);
+    }
+  }, [autoOptimize, searchParams, modelLogId]);
+
+  // Handle agent selection when parameters arrive
+  React.useEffect(() => {
+    if (agentId && agent?.data?.nodes) {
+      // Find the agent in the navigation and select it
+      // This will be handled by the main-nav.js component
+      window.dispatchEvent(new CustomEvent('selectAgent', {
+        detail: { agentId: parseInt(agentId) }
+      }));
+    }
+  }, [agentId, agent]);
+
+  // Handle optimization completion and URL cleanup
+  React.useEffect(() => {
+    const handleOptimizationCompleted = (event) => {
+      const { flags } = event.detail;
+      if (flags?.optimization_completed) {
+        // Add a small timeout before processing
+        setTimeout(async () => {
+          // Open the model modal for the specific model
+          const urlModelId = searchParams.get('modelId');
+          if (urlModelId) {
+            const model = agent?.data?.AgentNodes?.find(n => 
+              n.Model?.id?.toString() == urlModelId
+            );
+            if (model) {
+              // Refetch prompt versions to get the latest optimized prompts
+              try {
+                await refetch(); // This will refetch the prompt versions
+              } catch (error) {
+                console.error('Error refetching prompt versions:', error);
+              }
+              
+              setSelectedModel(model);
+              setDrawerOpen(true);
+            }
+          }
+          
+          // Remove autoOptimize parameter from URL
+          const url = new URL(window.location.href);
+          url.searchParams.delete('autoOptimize');
+          url.searchParams.delete('modelLogId');
+          window.history.replaceState({}, '', url.toString());
+        }, 1000); // 1 second timeout
+      }
+    };
+
+    const handleChatClosed = () => {
+      // Remove autoOptimize parameter from URL when chat is closed
+      const url = new URL(window.location.href);
+      url.searchParams.delete('autoOptimize');
+      url.searchParams.delete('modelLogId');
+      window.history.replaceState({}, '', url.toString());
+    };
+
+    window.addEventListener('optimizationCompleted', handleOptimizationCompleted);
+    window.addEventListener('onboarding:chat-closed', handleChatClosed);
+
+    return () => {
+      window.removeEventListener('optimizationCompleted', handleOptimizationCompleted);
+      window.removeEventListener('onboarding:chat-closed', handleChatClosed);
+    };
+  }, [searchParams, agent]);
+
+  // Handle auto-deployment from email
+  React.useEffect(() => {
+    if (autoDeploy === 'true' && agentId && modelId && promptVersion) {
+      // Find the model and open the drawer
+
+      if (agent && agent.data.AgentNodes) {
+        const targetModel = agent.data.AgentNodes.find(m => m.Model?.id.toString() == modelId);
+        if (targetModel) {
+          setSelectedModel(targetModel);
+          setDrawerOpen(true);
+          
+          // Auto-deploy the specific version after a short delay
+          setTimeout(() => {
+            // Find the prompt version and deploy it
+            console.log('promptVersions')
+            console.log(promptVersions)
+            if (promptVersions) {
+
+              const versionToDeploy = promptVersions.find(v => v.originalVersion == promptVersion);
+              console.log('versionToDeploy')
+              console.log(versionToDeploy)
+              if (versionToDeploy) {
+                setDefaultRightVersion(versionToDeploy.id);
+                setDeployTarget('right');
+                setDeployDialogOpen(true);
+              }
+            }
+            // Clean up URL parameters
+            const url = new URL(window.location.href);
+            url.searchParams.delete('autoDeploy');
+            url.searchParams.delete('promptVersion');
+            window.history.replaceState({}, '', url.toString());
+          }, 1000);
+        }
+      }
+      
+      
+    }
+  }, [autoDeploy, agentId, modelId, promptVersion, agent, promptVersions]);
 
   return (
     <Box
@@ -641,6 +771,7 @@ export default function PromptVersionsPage() {
                   onRightModelChange={setRightPromptVersion}
                   onLeftAccuracyChange={setLeftAccuracy}
                   onRightAccuracyChange={setRightAccuracy}
+                  defaultRightVersion={defaultRightVersion}
                 />
               </Box>
               <Box sx={{ flex: 0.8, minWidth: 0, pl: 2 }}>

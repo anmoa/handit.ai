@@ -90,6 +90,7 @@ export const paths = {
     modelRefinement: '/model-refinement',
     datasets: '/datasets',
     evaluationHub: '/evaluation-hub',
+    docs: '/docs',
     mail: {
       list: (label) => `/mail/${label}`,
       details: (label, emailId) => `/mail/${label}/${emailId}`,

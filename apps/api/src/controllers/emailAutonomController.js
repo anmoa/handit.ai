@@ -1,4 +1,4 @@
-import { sendAutonomWaitlistEmail, sendWelcomeNewUserEmail } from "../services/emailService.js";
+import { sendAutonomWaitlistEmail, sendWelcomeNewUserEmail, sendWelcomeHanditEmail } from "../services/emailService.js";
 import db from '../../models/index.js';
 
 const { Email, User } = db;
@@ -45,5 +45,27 @@ export const sendWelcomeEmail = async (req, res) => {
   } catch (error) {
     console.error('Error sending welcome email:', error);
     res.status(500).json({ error: 'Failed to send welcome email' });
+  }
+};
+
+export const sendHanditWelcomeEmail = async (req, res) => {
+  try {
+    const { email, firstName } = req.body;
+
+    if (!email || !firstName) {
+      return res.status(400).json({ error: 'Email and first name are required' });
+    }
+
+    await sendWelcomeHanditEmail({
+      recipientEmail: email,
+      firstName,
+      Email,
+      User
+    });
+    
+    res.status(201).json({ message: 'HandIt welcome email sent successfully' });
+  } catch (error) {
+    console.error('Error sending HandIt welcome email:', error);
+    res.status(500).json({ error: 'Failed to send HandIt welcome email' });
   }
 };

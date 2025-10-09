@@ -36,17 +36,24 @@ import {
   Stack,
   TextField,
   Typography,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import { CaretDown, WarningOctagon, X as XIcon } from '@phosphor-icons/react';
 import { SmartBezierEdge } from '@tisoap/react-flow-smart-edge';
 import ReactJson from 'react-json-view';
 import { Carousel } from 'react-responsive-carousel';
 import ReactFlow, { Background, Controls, MarkerType, ReactFlowProvider } from 'reactflow';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
 import { parseAttachments, parseContext, parseInputContent, parseOutputContent } from '@/lib/parsers';
 import { useUser } from '@/hooks/use-user';
 
 import { MonitoringNode } from './monitoring-node';
+import { TracingDeploymentNode } from './tracing-deployment-node';
+import { TracingToolNode } from './tracing-tool-node';
 
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 
@@ -59,9 +66,11 @@ const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="left" ref={ref} {...props} />;
 });
 
-// Register custom node type for ReactFlow
+// Register custom node types for tracing modal
 const nodeTypes = {
   custom: MonitoringNode,
+  deploymentCustom: TracingDeploymentNode,
+  toolCustom: TracingToolNode,
 };
 
 /**
@@ -383,10 +392,12 @@ const NodeDetails = ({
   model,
   onNodeUpdate,
   currentStepIndex,
+  disableCycles = false,
 }) => {
   const { user } = useUser();
   const isAdmin = user?.role === 'admin';
   const [step, setStep] = React.useState(node?.data?.steps?.[node?.data?.selectedCycleIndex]);
+  const [allSteps, setAllSteps] = React.useState([]);
 
   const [nodeAttachments, setNodeAttachments] = React.useState([]);
   const [expanded, setExpanded] = React.useState(['output']);
@@ -408,9 +419,16 @@ const NodeDetails = ({
   const [error, setError] = React.useState(null);
 
   React.useEffect(() => {
-    const step = node?.data?.steps?.[selectedCycle];
-    setStep(step);
-  }, [node, selectedCycle]);
+    if (disableCycles && node?.data?.steps) {
+      // Get all steps for this node when cycles are disabled
+      setAllSteps(node.data.steps);
+      setStep(node.data.steps[0]); // Set first step as default
+    } else {
+      const step = node?.data?.steps?.[selectedCycle];
+      setStep(step);
+      setAllSteps([step].filter(Boolean));
+    }
+  }, [node, selectedCycle, disableCycles]);
 
   React.useEffect(() => {
     setRelevance(step?.actual?.relevance || 0);
@@ -634,8 +652,13 @@ const NodeDetails = ({
   }, [step]);
 
 
-  const context = parseContext(step?.input, model);
-  const observation = step?.input?.previousSteps?.map((step) => step.observation).join('\n\n');
+  const context = parseContext(stepData?.input, model);
+  let observation = '';
+  if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Object) {
+    observation = Object.values(stepData?.input?.previousSteps)?.map((step) => step.observation).join('\n\n');
+  } else if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Array) {
+    observation = stepData?.input?.previousSteps?.map((step) => step.observation).join('\n\n');
+  }
 
   // Get all available steps for this node
   const steps = node?.data?.sequence || [];
@@ -670,6 +693,130 @@ const NodeDetails = ({
     );
   }
 
+  // Helper function to render step content
+  const renderStepContent = (stepData, stepIndex = null) => {
+    if (!stepData) return null;
+
+    const context = parseContext(stepData?.input, model);
+    let observation = '';
+    if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Object) {
+      observation = Object.values(stepData?.input?.previousSteps)?.map((step) => step.observation).join('\n\n');
+    } else if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Array) {
+      observation = stepData?.input?.previousSteps?.map((step) => step.observation).join('\n\n');
+    }
+    const stepPrefix = stepIndex !== null ? `Step ${stepIndex + 1} - ` : '';
+
+    return (
+      <Box key={stepIndex} sx={{ mb: stepIndex !== null ? 4 : 0 }}>
+        {stepIndex !== null && (
+          <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+            Entry #{stepIndex + 1}
+          </Typography>
+        )}
+
+        {stepData?.actual?.evaluations && stepData?.actual?.evaluations?.length > 0 && (
+  <Box sx={{ mb: 2 }}>
+    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+      {stepPrefix}Evaluation Insights
+    </Typography>
+    <List dense disablePadding>
+      {stepData?.actual?.evaluations.map((evaluator, index) => (
+        <ListItem key={index} sx={{ pl: 1, alignItems: 'flex-start', gap: 0 }} disableGutters>
+          <ListItemIcon sx={{ minWidth: 24, mt: 0.5, height: 'auto' }}>
+            <FiberManualRecordIcon sx={{ fontSize: 8 }} />
+          </ListItemIcon>
+          <ListItemText
+            primary={
+              <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, alignItems: 'flex-start' }}>
+                {parseEvaluationInsight(evaluator, index)}
+              </Typography>
+            }
+          />
+        </ListItem>
+      ))}
+    </List>
+  </Box>
+)}
+
+        {context && (
+          <Accordion
+            expanded={expanded.includes(`system-${stepIndex || 0}`)}
+            onChange={handleAccordionChange(`system-${stepIndex || 0}`)}
+            sx={{
+              '&:before': { display: 'none' },
+              boxShadow: 'none',
+              bgcolor: 'transparent',
+            }}
+          >
+            <AccordionSummary expandIcon={<CaretDown />} sx={{ px: 0, minHeight: 'unset' }}>
+              <Typography variant="subtitle2">{stepPrefix}System Prompt</Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: 0 }}>
+              <ContentCard>{context}</ContentCard>
+            </AccordionDetails>
+          </Accordion>
+        )}
+
+        {observation && (
+          <Accordion
+            expanded={expanded.includes(`observation-${stepIndex || 0}`)}
+            onChange={handleAccordionChange(`observation-${stepIndex || 0}`)}
+            sx={{
+              '&:before': { display: 'none' },
+              boxShadow: 'none',
+              bgcolor: 'transparent',
+            }}
+          >
+            <AccordionSummary expandIcon={<CaretDown />} sx={{ px: 0, minHeight: 'unset' }}>
+              <Typography variant="subtitle2">{stepPrefix}RAG Observations</Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: 0 }}>
+              <ContentCard>{observation}</ContentCard>
+            </AccordionDetails>
+          </Accordion>
+        )}
+
+        <Accordion
+          expanded={expanded.includes(`input-${stepIndex || 0}`)}
+          onChange={handleAccordionChange(`input-${stepIndex || 0}`)}
+          sx={{
+            '&:before': { display: 'none' },
+            boxShadow: 'none',
+            bgcolor: 'transparent',
+          }}
+        >
+          <AccordionSummary expandIcon={<CaretDown />} sx={{ px: 0, minHeight: 'unset' }}>
+            <Typography variant="subtitle2">{stepPrefix}{context ? 'User Prompt:' : 'Input:'}</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 0 }}>
+            <ContentCard>{parseInputContent(stepData.input, model)}</ContentCard>
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion
+          expanded={expanded.includes(`output-${stepIndex || 0}`)}
+          onChange={handleAccordionChange(`output-${stepIndex || 0}`)}
+          sx={{
+            '&:before': { display: 'none' },
+            boxShadow: 'none',
+            bgcolor: 'transparent',
+          }}
+        >
+          <AccordionSummary expandIcon={<CaretDown />} sx={{ px: 0, minHeight: 'unset' }}>
+            <Typography variant="subtitle2">{stepPrefix}Output:</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 0 }}>
+            <ContentCard>{parseOutputContent(stepData.output)}</ContentCard>
+          </AccordionDetails>
+        </Accordion>
+
+        {stepIndex !== null && stepIndex < allSteps.length - 1 && (
+          <Box sx={{ my: 3, borderBottom: 1, borderColor: 'divider' }} />
+        )}
+      </Box>
+    );
+  };
+
   return (
     <Stack spacing={3} sx={{ position: 'relative' }}>
       <Backdrop
@@ -694,7 +841,15 @@ const NodeDetails = ({
         </Typography>
       )}
 
-      {cycles.length > 1 && (
+      {disableCycles && allSteps.length > 1 && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgb(253, 151, 31)' }}>
+            This node was executed {allSteps.length} times. All entries are shown below:
+          </Typography>
+        </Box>
+      )}
+
+      {!disableCycles && cycles.length > 1 && (
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgb(253, 151, 31)' }}>
             Please select the cycle you want to debug:
@@ -711,103 +866,17 @@ const NodeDetails = ({
         </Box>
       )}
 
-      {
-        step?.actual?.summary ? (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Evaluation Insights
-            </Typography>
-            <Typography variant="body2">{step?.actual?.summary}</Typography>
-          </Box>
-        ) : (
-          step?.actual?.evaluations && step?.actual?.evaluations?.length > 0 && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Evaluation Insights
-              </Typography>
-              {step?.actual?.evaluations.map((evaluator, index) => (
-                <Typography variant="body2" key={index}> - {parseEvaluationInsight(evaluator, index)}</Typography>
-              ))}
-            </Box>
-          ))}
+      {disableCycles ? (
+        // Render all steps when cycles are disabled
+        allSteps.map((stepData, index) => renderStepContent(stepData, index))
+      ) : (
+        // Render single step when cycles are enabled
+        step && renderStepContent(step)
+      )}
 
       {step && (
         <>
-          {context && (
-            <Accordion
-              expanded={expanded.includes('system')}
-              onChange={handleAccordionChange('system')}
-              sx={{
-                '&:before': { display: 'none' },
-                boxShadow: 'none',
-                bgcolor: 'transparent',
-              }}
-            >
-              <AccordionSummary expandIcon={<CaretDown />} sx={{ px: 0, minHeight: 'unset' }}>
-                <Typography variant="subtitle2">System Prompt</Typography>
-              </AccordionSummary>
-              <AccordionDetails sx={{ px: 0 }}>
-                <ContentCard>{context}</ContentCard>
-              </AccordionDetails>
-            </Accordion>
-          )}
-
-          {observation && (
-            <Accordion
-              expanded={expanded.includes('observation')}
-              onChange={handleAccordionChange('observation')}
-              sx={{
-                '&:before': { display: 'none' },
-                boxShadow: 'none',
-                bgcolor: 'transparent',
-              }}
-            >
-              <AccordionSummary expandIcon={<CaretDown />} sx={{ px: 0, minHeight: 'unset' }}>
-                <Typography variant="subtitle2">RAG Observations</Typography>
-              </AccordionSummary>
-              <AccordionDetails sx={{ px: 0 }}>
-                <ContentCard>{observation}</ContentCard>
-              </AccordionDetails>
-            </Accordion>
-          )}
-
-          <Accordion
-            expanded={expanded.includes('input')}
-            onChange={handleAccordionChange('input')}
-            sx={{
-              '&:before': { display: 'none' },
-              boxShadow: 'none',
-              bgcolor: 'transparent',
-            }}
-          >
-            <AccordionSummary expandIcon={<CaretDown />} sx={{ px: 0, minHeight: 'unset' }}>
-              <Typography variant="subtitle2">{context ? 'User Prompt:' : 'Input:'}</Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ px: 0 }}>
-              <ContentCard>{parseInputContent(step.input, model)}</ContentCard>
-            </AccordionDetails>
-          </Accordion>
-
-          {/* Step Selector */}
-
           <AttachmentsSection attachments={nodeAttachments} onImageSelect={onImageSelect} />
-
-          <Accordion
-            expanded={expanded.includes('output')}
-            onChange={handleAccordionChange('output')}
-            sx={{
-              '&:before': { display: 'none' },
-              boxShadow: 'none',
-              bgcolor: 'transparent',
-            }}
-          >
-            <AccordionSummary expandIcon={<CaretDown />} sx={{ px: 0, minHeight: 'unset' }}>
-              <Typography variant="subtitle2">Output:</Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ px: 0 }}>
-              <ContentCard>{parseOutputContent(step.output)}</ContentCard>
-            </AccordionDetails>
-          </Accordion>
 
           {/* Add evaluation section for admins */}
           {isAdmin && node.data.type !== 'tool' && (
@@ -848,7 +917,7 @@ const NodeDetails = ({
  * @param {Object} props.model - The model data for parsing
  * @returns {JSX.Element} The entry overview component
  */
-const EntryOverview = ({ entryFlow, onImageSelect, entry, cycles, selectedCycle, onCycleChange, model }) => {
+const EntryOverview = ({ entryFlow, onImageSelect, entry, cycles, selectedCycle, onCycleChange, model, disableCycles = false }) => {
   const [entryAttachments, setEntryAttachments] = React.useState([]);
   const [expanded, setExpanded] = React.useState(['output']);
 
@@ -892,7 +961,7 @@ const EntryOverview = ({ entryFlow, onImageSelect, entry, cycles, selectedCycle,
         </Box>
       )}
 
-      {cycles.length > 1 && (
+      {!disableCycles && cycles.length > 1 && (
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgb(253, 151, 31)' }}>
             Please select a specific cycle to debug:
@@ -906,6 +975,14 @@ const EntryOverview = ({ entryFlow, onImageSelect, entry, cycles, selectedCycle,
               ))}
             </Select>
           </FormControl>
+        </Box>
+      )}
+
+      {disableCycles && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgb(253, 151, 31)' }}>
+            Showing all execution steps in a single flow.
+          </Typography>
         </Box>
       )}
 
@@ -984,6 +1061,33 @@ const connectFullCycle = (cycle, edges) => {
     });
   }
   return cycle;
+};
+
+// Create a single cycle with all steps when cycles are disabled
+const createSingleCycle = (nodes, edges) => {
+  // Get all steps from all nodes
+  const allSteps = [];
+  nodes.forEach(node => {
+    if (node.data.sequence) {
+      node.data.sequence.forEach(step => {
+        if (!allSteps.includes(step)) {
+          allSteps.push(step);
+        }
+      });
+    }
+  });
+  
+  // Sort steps
+  allSteps.sort((a, b) => a - b);
+  
+  // Get all unique node IDs
+  const allNodeIds = [...new Set(nodes.map(node => node.id))];
+  
+  return [{
+    steps: allSteps,
+    nodes: allNodeIds,
+    edges: connectFullCycle({ nodes: allNodeIds, edges: [] }, edges).edges,
+  }];
 };
 
 const detectCycles = (nodes, edges) => {
@@ -1114,6 +1218,15 @@ export function TracingModal({
   onNodeUpdate = () => { },
   preSelectedNodeId = null,
 }) {
+  // Get user data to check onboarding state
+  const { user } = useUser();
+  
+  // Track onboarding active state
+  const [isOnboardingActive, setIsOnboardingActive] = React.useState(false);
+  
+  // Flag to disable cycles functionality - set to true to show all entries in one flow
+  const [disableCycles, setDisableCycles] = React.useState(true);
+  
   const [selectedNode, setSelectedNode] = React.useState(null);
   const [processedNodes, setProcessedNodes] = React.useState([]);
   const [processedEdges, setProcessedEdges] = React.useState([]);
@@ -1126,6 +1239,25 @@ export function TracingModal({
   const [cycles, setCycles] = React.useState([]);
   const [selectedCycle, setSelectedCycle] = React.useState(0);
   const [regularEdges, setRegularEdges] = React.useState([]);
+
+  // Listen for onboarding state changes
+  React.useEffect(() => {
+    const handleOnboardingStateChange = (event) => {
+      setIsOnboardingActive(event.detail.active);
+    };
+
+    // Check initial state
+    if (typeof window !== 'undefined' && window.__onboardingActive) {
+      setIsOnboardingActive(true);
+    }
+
+    // Listen for changes
+    window.addEventListener('onboardingStateChange', handleOnboardingStateChange);
+
+    return () => {
+      window.removeEventListener('onboardingStateChange', handleOnboardingStateChange);
+    };
+  }, []);
 
   // Effect to handle pre-selected node when modal opens
   React.useEffect(() => {
@@ -1145,20 +1277,23 @@ export function TracingModal({
       const nodeToSelect = nodes.find((node) => node?.data?.initialNode);
 
       if (nodeToSelect) {
-        const step = nodeToSelect?.data?.sequence?.[0];
-        setSelectedNode(nodeToSelect);
-        setSelectedStep(step);
-        setCurrentStepIndex(0);
-        const path = findStepPath(step);
-        setHighlightedPath(path);
+        // Check if onboarding is currently active - don't auto-select node during onboarding
+        if (!isOnboardingActive) {
+          const step = nodeToSelect?.data?.sequence?.[0];
+          setSelectedNode(nodeToSelect);
+          setSelectedStep(step);
+          setCurrentStepIndex(0);
+          const path = findStepPath(step);
+          setHighlightedPath(path);
+        }
       }
     }
-  }, [open, preSelectedNodeId, nodes]);
+  }, [open, preSelectedNodeId, nodes, isOnboardingActive]);
 
   // Add effect to detect cycles when nodes change
   React.useEffect(() => {
     if (nodes.length > 0) {
-      const detectedCycles = detectCycles(nodes, edges);
+      const detectedCycles = disableCycles ? createSingleCycle(nodes, edges) : detectCycles(nodes, edges);
       setCycles(detectedCycles);
       if (detectedCycles.length > 0) {
         setSelectedCycle(0);
@@ -1169,7 +1304,7 @@ export function TracingModal({
         });
       }
     }
-  }, [nodes, edges]);
+  }, [nodes, edges, disableCycles]);
 
   // Modify the cycle selection handler
   const handleCycleChange = (event) => {
@@ -1446,15 +1581,23 @@ export function TracingModal({
           return edge;
         });
         setRegularEdges([...updatedEdges]);
-        const newNodes = nodes.map((node) => {
+        const newNodes = nodes.map((node, index) => {
           return {
             ...node,
+            type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
+            position: {
+              ...node.position,
+              x: node.position?.x ? node.position.x * 2.0 : 0 // Add 100% more horizontal spacing for larger nodes
+            },
             data: {
               ...node.data,
               isSelected: node.id == selectedNode?.id ? true : false,
-              currentStep: cycles[selectedCycle]?.steps[0],
+              currentStep: disableCycles ? node.data.sequence : cycles[selectedCycle]?.steps[0],
               selectedCycle: cycles[selectedCycle],
               selectedCycleIndex: selectedCycle,
+              disableCycles: disableCycles,
+              allSteps: disableCycles ? node.data.sequence : undefined,
+              onClick: () => handleNodeClick(node),
             },
           };
         });
@@ -1516,12 +1659,20 @@ export function TracingModal({
         newNodes = newNodes.map((node) => {
           return {
             ...node,
+            type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
+            position: {
+              ...node.position,
+              x: node.position?.x ? node.position.x * 2.0 : 0 // Add 100% more horizontal spacing for larger nodes
+            },
             data: {
               ...node.data,
               isSelected: node.id == selectedNode?.id ? true : false,
-              currentStep: cycles[selectedCycle]?.steps[0],
+              currentStep: disableCycles ? node.data.sequence : cycles[selectedCycle]?.steps[0],
               selectedCycle: cycles[selectedCycle],
               selectedCycleIndex: selectedCycle,
+              disableCycles: disableCycles,
+              allSteps: disableCycles ? node.data.sequence : undefined,
+              onClick: () => handleNodeClick(node),
             },
           };
         });
@@ -1533,19 +1684,72 @@ export function TracingModal({
       const newNodes = nodes.map((node) => {
         return {
           ...node,
+          type: node.data.type === 'model' ? 'deploymentCustom' : node.data.type === 'tool' ? 'toolCustom' : 'custom',
+          position: {
+            ...node.position,
+            x: node.position?.x ? node.position.x * 1.5 : 0 // Add 50% more horizontal spacing
+          },
           data: {
             ...node.data,
             isSelected: node.id == selectedNode?.id ? true : false,
-            currentStep: cycles[selectedCycle]?.steps[0],
+            currentStep: disableCycles ? node.data.sequence : cycles[selectedCycle]?.steps[0],
             selectedCycle: cycles[selectedCycle],
             selectedCycleIndex: selectedCycle,
+            disableCycles: disableCycles,
+            allSteps: disableCycles ? node.data.sequence : undefined,
+            onClick: () => handleNodeClick(node),
           },
         };
       });
       setProcessedNodes([...newNodes]);
       setRegularEdges(edges);
     }
-  }, [nodes, edges, entry, selectedNode, selectedCycle]);
+  }, [nodes, edges, entry, selectedNode, selectedCycle, disableCycles]);
+
+  // Calculate viewport to center first node or use fitView for small graphs
+  const { initialViewport, shouldUseFitView } = React.useMemo(() => {
+    if (processedNodes.length > 0) {
+      // Count unique Y levels
+      const uniqueYLevels = [...new Set(processedNodes.map(node => Math.round((node.position?.y || 0) / 50) * 50))];
+      const shouldFitView = uniqueYLevels.length < 6;
+      
+      console.log('🎯 Y levels:', uniqueYLevels.length, 'shouldUseFitView:', shouldFitView);
+      
+      if (shouldFitView) {
+        // Use fitView for small graphs - return a default viewport that will be overridden by fitView
+        return { 
+          initialViewport: { x: 0, y: 0, zoom: 0.5 },
+          shouldUseFitView: true 
+        };
+      } else {
+        // Find the first node for custom centering
+        const firstNode = processedNodes.reduce((first, current) => {
+          if (!first) return current;
+          if ((current.position?.y || 0) < (first.position?.y || 0)) return current;
+          if ((current.position?.y || 0) === (first.position?.y || 0) && (current.position?.x || 0) < (first.position?.x || 0)) return current;
+          return first;
+        }, null);
+
+        if (firstNode) {
+          // Center the first node on screen with proper calculation
+          return {
+            initialViewport: {
+              x: -(firstNode.position?.x || 0) + 400, // Move first node to 400px from left (center-ish)
+              y: -(firstNode.position?.y || 0) + 150, // Move first node to 150px from top
+              zoom: 0.6 // Good balance between detail and overview
+            },
+            shouldUseFitView: false
+          };
+        }
+      }
+    }
+    
+    // Default viewport if no nodes
+    return { 
+      initialViewport: { x: 250, y: 20, zoom: 0.4 },
+      shouldUseFitView: false 
+    };
+  }, [processedNodes]);
 
   const handlePaneClick = () => {
     setSelectedNode(null);
@@ -1643,6 +1847,7 @@ export function TracingModal({
           ...edge.style,
           stroke: isHighlighted ? '#1976d2' : '#a7a7ab',
           strokeWidth: isHighlighted ? 5 : 2,
+          zIndex: 1000, // High z-index to appear above nodes
         },
         markerEnd: isHighlighted
           ? {
@@ -1655,6 +1860,7 @@ export function TracingModal({
             type: null,
           },
         animated: isHighlighted,
+        zIndex: 1000, // High z-index to appear above nodes
       };
     });
 
@@ -1670,6 +1876,7 @@ export function TracingModal({
           strokeWidth: 5,
           strokeDasharray: '5, 5',
           opacity: 1,
+          zIndex: 1000, // High z-index to appear above nodes
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
@@ -1679,15 +1886,230 @@ export function TracingModal({
         },
         type: 'smart',
         animated: true,
+        zIndex: 1000, // High z-index to appear above nodes
       }));
 
-    if (cycles.length > 1) {
-      setProcessedEdges([...updatedEdges, ...phantomEdges]);
-    } else {
-      setProcessedEdges([...updatedEdges]);
-    }
-  }, [regularEdges, highlightedPath]);
+      // Helper function to get node position
+      const getNodePosition = (nodeId) => {
+        const node = processedNodes.find(n => n.id === nodeId);
+        return node?.position || { x: 0, y: 0 };
+      };
 
+      // Helper function to filter and process edges
+      const processEdges = (edges) => {
+        // Remove self-loops
+        let filteredEdges = edges.filter((edge) => edge.source !== edge.target);
+        
+        // Group edges by their endpoints to find bidirectional pairs
+        const edgeMap = new Map();
+        filteredEdges.forEach(edge => {
+          const sourcePos = getNodePosition(edge.source);
+          const targetPos = getNodePosition(edge.target);
+          
+          // Create a key for the edge pair (sorted to handle both directions)
+          const key = [edge.source, edge.target].sort().join('-');
+          
+          if (!edgeMap.has(key)) {
+            edgeMap.set(key, []);
+          }
+          
+          edgeMap.get(key).push({
+            ...edge,
+            sourcePos,
+            targetPos,
+            isUpward: sourcePos.y > targetPos.y // source is below target
+          });
+        });
+
+        // Process each edge group
+        const finalEdges = [];
+        
+        edgeMap.forEach((edgeGroup, key) => {
+          if (edgeGroup.length === 1) {
+            const edge = edgeGroup[0];
+            const sourcePos = edge.sourcePos || { x: 0, y: 0 };
+            const targetPos = edge.targetPos || { x: 0, y: 0 };
+            
+            // Calculate if nodes are at same level (horizontal connection)
+            const isHorizontal = Math.abs(sourcePos.y - targetPos.y) < 50; // 50px tolerance for "same level"
+            const isLeftToRight = sourcePos.x < targetPos.x;
+            
+            if (isHorizontal) {
+              // Horizontal connection - use left/right handles with straight lines
+              finalEdges.push({
+                ...edge,
+                sourceHandle: isLeftToRight ? 'right' : 'left',
+                targetHandle: isLeftToRight ? 'left' : 'right',
+                type: 'straight',
+                zIndex: 1000, // High z-index to appear above nodes
+                style: {
+                  ...edge.style,
+                  zIndex: 1000, // High z-index to appear above nodes
+                }
+              });
+            } else if (!edge.isUpward) {
+              // Regular top-to-bottom edge
+              finalEdges.push({
+                ...edge,
+                zIndex: 1000, // High z-index to appear above nodes
+                style: {
+                  ...edge.style,
+                  zIndex: 1000, // High z-index to appear above nodes
+                }
+              });
+            } else {
+              // Bottom-to-top edge - always use side handles for cleaner routing
+              const dx = Math.abs(sourcePos.x - targetPos.x);
+              const isSourceLeft = sourcePos.x < targetPos.x;
+              const isSourceRight = sourcePos.x > targetPos.x;
+              
+              if (isSourceLeft) {
+                // A is to the left of B - connect from right of A to left of B
+                finalEdges.push({
+                  ...edge,
+                  sourceHandle: 'right',
+                  targetHandle: 'left',
+                  type: 'smart',
+                  zIndex: 1000,
+                  style: {
+                    ...edge.style,
+                    zIndex: 1000,
+                  }
+                });
+              } else if (isSourceRight) {
+                // A is to the right of B - connect from left of A to right of B
+                finalEdges.push({
+                  ...edge,
+                  sourceHandle: 'left',
+                  targetHandle: 'right',
+                  type: 'smart',
+                  zIndex: 1000,
+                  style: {
+                    ...edge.style,
+                    zIndex: 1000,
+                  }
+                });
+      } else {
+                // A is directly below B (same X) - use right side for cleaner routing
+                finalEdges.push({
+                  ...edge,
+                  sourceHandle: 'top',    // Start from top of source node
+                  targetHandle: 'right', // End at right side of target node
+                  type: 'smart',
+                  zIndex: 1000,
+                  style: {
+                    ...edge.style,
+                    zIndex: 1000,
+                  }
+                });
+              }
+            }
+          } else if (edgeGroup.length === 2) {
+            // Bidirectional edges - determine if horizontal or vertical
+            const edge1 = edgeGroup[0];
+            const edge2 = edgeGroup[1];
+            const sourcePos = edge1.sourcePos || { x: 0, y: 0 };
+            const targetPos = edge1.targetPos || { x: 0, y: 0 };
+            
+            const isHorizontal = Math.abs(sourcePos.y - targetPos.y) < 50;
+            const isLeftToRight = sourcePos.x < targetPos.x;
+            
+            if (isHorizontal) {
+              // Horizontal bidirectional connection with straight lines
+              const leftToRight = edgeGroup.find(e => (e.sourcePos?.x || 0) < (e.targetPos?.x || 0));
+              if (leftToRight) {
+                finalEdges.push({
+                  ...leftToRight,
+                  sourceHandle: 'right',
+                  targetHandle: 'left',
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: leftToRight.style?.stroke || '#1976d2',
+                    width: 10,
+                    height: 10,
+                  },
+                  markerStart: {
+                    type: MarkerType.ArrowClosed,
+                    color: leftToRight.style?.stroke || '#1976d2',
+                    width: 10,
+                    height: 10,
+                  },
+                  type: 'straight',
+                  zIndex: 1000, // High z-index to appear above nodes
+                  style: {
+                    ...leftToRight.style,
+                    zIndex: 1000, // High z-index to appear above nodes
+                  }
+                });
+              }
+            } else {
+              // Vertical bidirectional connection
+              const topToBottom = edgeGroup.find(e => !e.isUpward);
+              const bottomToTop = edgeGroup.find(e => e.isUpward);
+              
+              if (topToBottom && bottomToTop) {
+                // Show the top-to-bottom edge with bidirectional arrows
+                finalEdges.push({
+                  ...topToBottom,
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: topToBottom.style?.stroke || '#1976d2',
+                    width: 10,
+                    height: 10,
+                  },
+                  markerStart: {
+                    type: MarkerType.ArrowClosed,
+                    color: topToBottom.style?.stroke || '#1976d2',
+                    width: 10,
+                    height: 10,
+                  },
+                  zIndex: 1000, // High z-index to appear above nodes
+                  style: {
+                    ...topToBottom.style,
+                    zIndex: 1000, // High z-index to appear above nodes
+                  }
+                });
+              } else if (topToBottom) {
+                // Only top-to-bottom exists
+                finalEdges.push({
+                  ...topToBottom,
+                  zIndex: 1000, // High z-index to appear above nodes
+                  style: {
+                    ...topToBottom.style,
+                    zIndex: 1000, // High z-index to appear above nodes
+                  }
+                });
+              } else if (bottomToTop) {
+                // Only bottom-to-top exists - modify connection points
+                finalEdges.push({
+                  ...bottomToTop,
+                  sourceHandle: 'top',    // Start from top of source node
+                  targetHandle: 'bottom', // End at bottom of target node
+                  type: 'smart',
+                  zIndex: 1000, // High z-index to appear above nodes
+                  style: {
+                    ...bottomToTop.style,
+                    zIndex: 1000, // High z-index to appear above nodes
+                  }
+                });
+              }
+            }
+          }
+        });
+
+        return finalEdges;
+      };
+
+      if (cycles.length > 1) {
+        const processedRegularEdges = processEdges(updatedEdges);
+        const processedPhantomEdges = processEdges(phantomEdges);
+        setProcessedEdges([...processedRegularEdges, ...processedPhantomEdges]);
+      } else {
+        const processedRegularEdges = processEdges(updatedEdges);
+        setProcessedEdges([...processedRegularEdges]);
+      }
+  }, [regularEdges, highlightedPath]);
+  console.log('open', open);
   return (
     <Dialog
       maxWidth="xl"
@@ -1739,9 +2161,23 @@ export function TracingModal({
           }}
         >
           <Typography variant="h6">Entry Flow Details</Typography>
-          <IconButton onClick={onClose}>
-            <XIcon />
-          </IconButton>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <FormControl size="small">
+              <InputLabel>View Mode</InputLabel>
+              <Select
+                value={disableCycles ? 'flat' : 'cycles'}
+                onChange={(e) => setDisableCycles(e.target.value === 'flat')}
+                label="View Mode"
+                sx={{ minWidth: 120 }}
+              >
+                <MenuItem value="cycles">Cycles</MenuItem>
+                <MenuItem value="flat">Flat View</MenuItem>
+              </Select>
+            </FormControl>
+            <IconButton onClick={onClose}>
+              <XIcon />
+            </IconButton>
+          </Stack>
         </Stack>
 
         {isLoading ? (
@@ -1790,7 +2226,7 @@ export function TracingModal({
                   <ReactFlowProvider>
                     <ReactFlow
                       key={flowKey}
-                      nodes={processedNodes}
+                      nodes={processedNodes.filter(node => node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number')}
                       edges={processedEdges}
                       edgeTypes={edgeTypes}
                       nodeTypes={nodeTypes}
@@ -1798,7 +2234,9 @@ export function TracingModal({
                         handleNodeClick(node);
                         setSelectedStep(node.data.sequence[0]);
                       }}
-                      fitView
+                      defaultViewport={initialViewport}
+                      fitView={shouldUseFitView}
+                      fitViewOptions={shouldUseFitView ? { padding: 0.1 } : undefined}
                       nodesDraggable={false}
                       nodesConnectable={false}
                       minZoom={0.1}
@@ -1836,6 +2274,7 @@ export function TracingModal({
                     onNodeUpdate={onNodeUpdate}
                     setCurrentStepIndex={setCurrentStepIndex}
                     currentStepIndex={currentStepIndex}
+                    disableCycles={disableCycles}
                   />
                 ) : (
                   <EntryOverview
@@ -1846,6 +2285,7 @@ export function TracingModal({
                     onImageSelect={setSelectedImage}
                     entry={entry}
                     model={model}
+                    disableCycles={disableCycles}
                   />
                 )}
               </Box>

@@ -23,6 +23,7 @@ export const createAgentNode = async ({
   nodeName,
   toolType = 'HTTP',
   description = '',
+  group = null,
 }) => {
   if (nodeType === 'model') {
     const modelGroup = await ModelGroup.create({
@@ -41,6 +42,14 @@ export const createAgentNode = async ({
       active: true,
     });
 
+    // Add default correctness evaluator to the model
+    try {
+      await Model.addDefaultCorrectnessEvaluator(model.id, agent.companyId);
+    } catch (error) {
+      console.error('Failed to add correctness evaluator:', error);
+      // Don't fail the model creation if evaluator addition fails
+    }
+
     return await AgentNode.create({
       agentId: agent.id,
       name: model.name,
@@ -54,6 +63,7 @@ export const createAgentNode = async ({
       },
       modelId: model.id,
       slug: nodeId,
+      group: group,
     });
   } else {
     return await AgentNode.create({
@@ -148,15 +158,18 @@ export const connectNodes = async ({
 /**
  * Updates the positions of all nodes in an agent using the repositionGraphNodes function
  */
-export const repositionAgentNodes = async (agent) => {
+export const repositionAgentNodes = async (agent, group = false) => {
+  console.log('repositionAgentNodes', agent.id, group);
   const nodes = await AgentNode.findAll({
     where: { agentId: agent.id },
     include: [
       {
+        required: false,
         model: AgentConnection,
         as: 'outgoingConnections',
         include: [
           {
+            required: false,
             model: AgentNode,
             as: 'toNode',
           },
@@ -174,6 +187,7 @@ export const repositionAgentNodes = async (agent) => {
     nodes: nodes.map((node) => ({
       name: node.name,
       slug: node.slug,
+      group: group ? node.group : null,
       type: node.type,
       description: node.config?.description || '',
       position: node.config?.position || { x: 0, y: 0 },
@@ -185,22 +199,23 @@ export const repositionAgentNodes = async (agent) => {
     })),
   };
 
-  const repositionedConfig = repositionGraphNodes(agentConfig);
+  const repositionedConfig = await repositionGraphNodes(agentConfig, group);
+  const nodesPlain = await AgentNode.findAll({
+    where: { agentId: agent.id },
+  });
 
-  // Update node positions
-  await Promise.all(
-    repositionedConfig.nodes.map(async (nodeConfig) => {
-      const node = nodes.find((n) => n.slug === nodeConfig.slug);
-      if (node) {
-        await node.update({
-          config: {
-            ...node.config,
-            position: nodeConfig.position,
-          },
-        });
-      }
-    })
-  );
+  await Promise.all(nodesPlain.map(async (node) => {
+    const nodeConfig = repositionedConfig.nodes.find((n) => n.slug === node.slug);
+    if (nodeConfig) {
+      node.config = {
+        ...node.config,
+        position: nodeConfig.position,
+      };
+      await node.save();
+    } else {
+      console.log('node not found', node.slug);
+    }
+  }));
 };
 
 /**
@@ -215,6 +230,7 @@ export const findOrCreateAgentNode = async ({
   toolType = 'HTTP',
   description = '',
   agentLogId = null,
+  group = null,
 }) => {
   // Try to find existing node
   const agentLog = await AgentLog.findOne({
@@ -233,6 +249,7 @@ export const findOrCreateAgentNode = async ({
       agentId: agent.id,
     },
   });
+  let newNode = false;
 
   if (!agentNode) {
     // Create new node
@@ -243,8 +260,10 @@ export const findOrCreateAgentNode = async ({
       nodeName,
       toolType,
       description,
+      group,
     });
 
+    newNode = true;
     // Reposition all nodes
   }
 
@@ -260,5 +279,5 @@ export const findOrCreateAgentNode = async ({
 
   await repositionAgentNodes(agent);
 
-  return agentNode;
+  return { agentNode, newNode };
 };

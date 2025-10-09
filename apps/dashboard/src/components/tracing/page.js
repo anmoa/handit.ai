@@ -11,11 +11,8 @@ import {
   useGetAgentByIdQuery,
 } from '@/services/agentsService';
 import { Box, Card, Stack } from '@mui/material';
-import Grid from '@mui/material/Unstable_Grid2';
 
 import { TracingTable } from '@/components/dashboard/agents/tracing-table';
-import { TracingDetails } from '@/components/dashboard/agents/tracing-details';
-import { TracingFlow } from '@/components/dashboard/agents/tracing-flow';
 
 /**
  * TracingPage component for displaying agent tracing information

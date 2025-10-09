@@ -78,7 +78,7 @@ If none of these templates precisely match the prompt, then critically adapt or 
 
 `;
 
-export const enhancePrompt = async (originalPrompt, suggestions, optimizationToken, optimizationProvider, optimizationModel) => {
+export const enhancePrompt = async (originalPrompt, suggestions, optimizationToken, optimizationTokenData, optimizationProvider, optimizationModel) => {
   const input = [
     {
       role: 'system',
@@ -110,6 +110,7 @@ Only output the enhanced prompt itself—no additional text or explanations. Kee
   const completion = await generateAIResponse({
     messages: input,
     token: optimizationToken,
+    tokenData: optimizationTokenData,
     provider: optimizationProvider,
     model: optimizationModel,
   });

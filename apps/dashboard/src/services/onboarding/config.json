@@ -1,0 +1,825 @@
+{
+  "tourConfig": {
+    "version": "1.0.0",
+    "defaultSettings": {
+      "theme": {
+        "primaryColor": "#6366f1",
+        "secondaryColor": "#f8fafc",
+        "textColor": "#1e293b",
+        "backgroundColor": "rgba(0, 0, 0, 0.7)",
+        "borderRadius": "12px",
+        "fontSize": "16px",
+        "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+      },
+      "animation": {
+        "duration": 300,
+        "easing": "ease-in-out",
+        "highlightPulse": true
+      },
+      "positioning": {
+        "offset": 10,
+        "zIndex": 10000
+      }
+    },
+    "triggers": {
+      "firstLogin": {
+        "condition": "user.loginCount === 1 && user.signupCompleted === true",
+        "tourId": "autonomous-engineer-setup"
+      },
+      "wizardSetup": {
+        "condition": "user.hasSkippedWalkthrough === true",
+        "tourId": "autonomous-engineer-setup"
+      },
+      "firstTrace": {
+        "condition": "user.hasIntegratedSDK === true && events.firstTrace === true && user.hasCompletedWalkthrough === true",
+        "tourId": "first-trace-tracing-evaluation"
+      },
+      "firstOptimization": {
+        "condition": "user.hasOptimizations === true && user.hasCompletedWalkthrough === true",
+        "tourId": "first-optimization-celebration"
+      }
+    },
+    "tours": [
+      {
+        "id": "demo-video",
+        "name": "Demo Video",
+        "description": "Interactive demo video showing handit.ai capabilities",
+        "type": "guided",
+        "icon": "Play",
+        "settings": {
+          "canSkip": true,
+          "showOnlyOnce": false,
+          "canReplay": true,
+          "showProgress": false,
+          "showAssistant": false,
+          "assistantPosition": "bottom-center",
+          "backdrop": true,
+          "escapeToClose": true,
+          "clickOutsideToClose": true
+        },
+        "analytics": {
+          "trackSteps": true,
+          "trackCompletions": true,
+          "trackSkips": true,
+          "trackTimeSpent": true
+        },
+        "steps": [
+          {
+            "stepNumber": 1,
+            "id": "demo-video-banner",
+            "type": "banner",
+            "title": "Demo Video",
+            "target": "body",
+            "placement": "center",
+            "content": {
+              "heading": "See handit.ai in Action! 🎬",
+              "description": "Watch how our autonomous engineer monitors and fixes AI issues automatically.",
+              "variant": "info",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🎬",
+              "videoUrl": "https://cdn.handit.ai/Autonomous%20AI%20Monitoring%20and%20Fixing%20(1).mp4"
+            },
+            "actions": [
+              {
+                "text": "Setup My Autonomous Engineer",
+                "type": "primary",
+                "action": "nextTour",
+                "nextTourId": "autonomous-engineer-setup",
+                "analytics": "demo_setup_engineer"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          }
+        ]
+      },
+      {
+        "id": "autonomous-engineer-setup",
+        "name": "Autonomous Engineer Setup",
+        "description": "Guide users to setup their autonomous engineer with GitHub integration or manual CLI",
+        "type": "guided",
+        "icon": "Robot",
+        "settings": {
+          "canSkip": false,
+          "showProgress": true,
+          "showAssistant": true,
+          "autoNavigate": false
+        },
+        "steps": [
+          {
+            "stepNumber": 1,
+            "id": "cli-instructions",
+            "type": "banner",
+            "title": "Setup Your Autonomous Engineer",
+            "target": "body",
+            "placement": "center",
+            "content": {
+              "heading": "Setup Your Autonomous Engineer",
+              "description": "Open your terminal in your project directory and run these commands to setup your autonomous engineer:",
+              "variant": "info",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "💻",
+              "codeBlocks": [
+                {
+                  "language": "bash",
+                  "title": "Install CLI globally",
+                  "code": "npm install -g @handit.ai/cli",
+                  "copyable": true
+                },
+                {
+                  "language": "bash", 
+                  "title": "Setup your agent in your project",
+                  "code": "handit-cli setup",
+                  "copyable": true
+                }
+              ]
+            },
+            "actions": [
+              {
+                "text": "See how handit works",
+                "type": "secondary",
+                "action": "nextTour",
+                "nextTourId": "demo-video",
+                "analytics": "cli_see_demo"
+              },
+              {
+                "text": "I've Setup My Engineer",
+                "type": "primary",
+                "action": "nextStep",
+                "analytics": "cli_setup_completed"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          },
+          {
+            "stepNumber": 2,
+            "id": "ai-model-setup-form",
+            "type": "form",
+            "title": "Connect Your AI Provider",
+            "target": "body",
+            "placement": "center",
+            "content": {
+              "heading": "Connect Your AI Provider",
+              "description": "To enable automatic evaluation and optimization, we need access to your AI model (OpenAI, Llama, etc.). This allows handit to analyze your AI's performance and generate improvements.",
+              "fields": [
+                {
+                  "name": "providerId",
+                  "label": "Provider",
+                  "type": "select",
+                  "required": true,
+                  "placeholder": "Select AI provider",
+                  "options": []
+                },
+                {
+                  "name": "apiKey",
+                  "label": "API Key",
+                  "type": "password",
+                  "required": true,
+                  "placeholder": "Enter your API key"
+                }
+              ]
+            },
+            "actions": [
+              {
+                "text": "Connect Provider",
+                "type": "primary",
+                "action": "submitForm",
+                "analytics": "ai_model_connected"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          },
+          {
+            "stepNumber": 3,
+            "id": "setup-complete",
+            "type": "banner",
+            "title": "Setup Complete",
+            "target": "body",
+            "placement": "center",
+            "content": {
+              "heading": "Setup Complete!",
+              "description": "Your autonomous engineer is now ready! To start evaluation and optimization, send your first trace by executing your agent with handit's changes. We'll begin analyzing and improving your AI as soon as we receive the first trace.",
+              "variant": "success",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🎉"
+            },
+            "actions": [
+              {
+                "text": "Finish Setup",
+                "type": "primary",
+                "action": "finishTour",
+                "analytics": "autonomous_engineer_setup_complete"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          }
+        ]
+      },
+      {
+        "id": "first-trace-tracing-evaluation",
+        "name": "First Trace",
+        "description": "Guide users through tracing and understanding trace details after their first trace",
+        "type": "guided",
+        "icon": "ChartLine",
+        "settings": {
+          "canSkip": true,
+          "showOnlyOnce": true,
+          "canReplay": true,
+          "showProgress": true,
+          "showAssistant": true,
+          "assistantPosition": "bottom-center",
+          "backdrop": false,
+          "escapeToClose": true,
+          "clickOutsideToClose": false
+        },
+        "analytics": {
+          "trackSteps": true,
+          "trackCompletions": true,
+          "trackSkips": true,
+          "trackTimeSpent": true
+        },
+        "steps": [
+          {
+            "stepNumber": 1,
+            "id": "first-trace-celebration",
+            "type": "banner",
+            "title": "First Trace Celebration",
+            "target": "body",
+            "placement": "center",
+            "content": {
+              "heading": "🎉 Congratulations! Your First Trace is Here!",
+              "description": "Your autonomous engineer is now live and monitoring your AI. Let's explore how to view and understand your traces.",
+              "variant": "success",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🎉"
+            },
+            "actions": [
+              {
+                "text": "Explore Tracing",
+                "type": "primary",
+                "action": "nextStep",
+                "analytics": "first_trace_celebration_continue"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          },
+          {
+            "stepNumber": 2,
+            "id": "navigate-to-tracing",
+            "type": "cursor-only",
+            "title": "Navigate to Tracing",
+            "target": "[data-nav-item='Tracing']",
+            "placement": "right",
+            "content": {
+              "heading": "Click on Tracing",
+              "description": "Let's explore your first agent execution"
+            },
+            "actions": [],
+            "duration": null,
+            "autoAdvance": false,
+            "advanceOnClick": {
+              "target": "[data-nav-item='Tracing']",
+              "description": "Click on the Tracing menu item to proceed"
+            },
+            "cursorGuidance": {
+              "enabled": true,
+              "delay": 500,
+              "steps": [
+                {
+                  "target": "[data-nav-item='Tracing']",
+                  "targetText": "Tracing",
+                  "highlight": { "style": "glow", "intensity": "high", "duration": 3000 },
+                  "animation": { "duration": 1200, "easing": "ease-in-out", "path": "curved" },
+                  "action": { "type": "hover" },
+                  "instruction": {
+                    "title": "Click on Tracing",
+                    "description": "Monitor every agent decision in real-time with complete visibility.",
+                    "tip": "Every execution tracked automatically",
+                    "position": "right",
+                    "showNearTarget": true
+                  },
+                  "delay": 100
+                }
+              ]
+            }
+          },
+          {
+            "stepNumber": 3,
+            "id": "click-first-trace",
+            "type": "cursor-only",
+            "title": "Open Agent Execution",
+            "target": "[data-testid='trace-row-first']",
+            "placement": "right",
+            "content": {
+              "heading": "Click on First Trace",
+              "description": "Dive into a complete agent execution"
+            },
+            "actions": [],
+            "duration": null,
+            "autoAdvance": false,
+            "advanceOnClick": {
+              "target": "[data-testid='trace-row-first']",
+              "description": "Click on the first trace row to open it"
+            },
+            "waitForElement": {
+              "target": "[data-testid='trace-row-first']",
+              "timeout": 15000,
+              "checkInterval": 1000
+            },
+            "cursorGuidance": {
+              "enabled": true,
+              "delay": 1000,
+              "steps": [
+                {
+                  "target": "[data-testid='trace-row-first']",
+                  "targetText": "First Trace",
+                  "highlight": { "style": "glow", "intensity": "high", "duration": 3000 },
+                  "animation": { "duration": 1200, "easing": "ease-in-out", "path": "curved" },
+                  "action": { "type": "hover" },
+                  "instruction": {
+                    "title": "Click on this Trace",
+                    "description": "See the complete execution flow with every node, input, and output.",
+                    "tip": "Every decision is tracked",
+                    "position": "top",
+                    "showNearTarget": true
+                  },
+                  "delay": 100
+                }
+              ]
+            }
+          },
+          {
+            "stepNumber": 4,
+            "id": "trace-execution-explanation",
+            "type": "banner",
+            "title": "Understanding Trace Execution",
+            "target": "body",
+            "placement": "left-top",
+            "content": {
+              "heading": "🔍 Agent Execution Flow",
+              "description": "Here you can see your agent's complete execution flow with every node, input, and output.",
+              "variant": "info",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🔍"
+            },
+            "actions": [
+              {
+                "text": "Explore Node Details",
+                "type": "primary",
+                "action": "nextStep",
+                "analytics": "trace_execution_continue"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          },
+          {
+            "stepNumber": 5,
+            "id": "click-node-details",
+            "type": "cursor-only",
+            "title": "Explore Node Details",
+            "target": ".react-flow__node:nth-child(2), .react-flow__node:first-child",
+            "placement": "right",
+            "content": {
+              "heading": "Click on a Node",
+              "description": "Let's explore the details of a node to see inputs, outputs, and evaluation results"
+            },
+            "actions": [],
+            "duration": null,
+            "autoAdvance": false,
+            "advanceOnClick": {
+              "target": ".react-flow__node:nth-child(2), .react-flow__node:first-child",
+              "description": "Click on any node to see its details"
+            },
+            "waitForElement": {
+              "target": ".react-flow__node:nth-child(2), .react-flow__node:first-child",
+              "timeout": 15000,
+              "checkInterval": 1000
+            },
+            "cursorGuidance": {
+              "enabled": true,
+              "delay": 1000,
+              "steps": [
+                {
+                  "target": ".react-flow__node:nth-child(2), .react-flow__node:first-child",
+                  "targetText": "Node",
+                  "highlight": { "style": "glow", "intensity": "high", "duration": 3000 },
+                  "animation": { "duration": 1200, "easing": "ease-in-out", "path": "curved" },
+                  "action": { "type": "hover" },
+                  "instruction": {
+                    "title": "Click on this Node",
+                    "description": "See the complete input, output, and evaluation details for this node.",
+                    "tip": "Every node has detailed information",
+                    "position": "right",
+                    "showNearTarget": true
+                  },
+                  "delay": 100
+                }
+              ]
+            }
+          },
+          {
+            "stepNumber": 6,
+            "id": "node-details-explanation",
+            "type": "banner",
+            "title": "Node Details Panel",
+            "target": "body",
+            "placement": "right-top",
+            "content": {
+              "heading": "📋 Complete Trace Visibility",
+              "description": "On the right side, you can see each input, output, and evaluation results for this node. This gives you complete visibility into your AI's decision-making process. Every trace is automatically monitored and evaluated.",
+              "variant": "info",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "📋"
+            },
+            "actions": [
+              {
+                "text": "Complete Tour",
+                "type": "primary",
+                "action": "nextStep",
+                "analytics": "node_details_complete"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          },
+          {
+            "stepNumber": 7,
+            "id": "first-trace-tour-complete",
+            "type": "banner",
+            "title": "Tracing Tour Complete",
+            "target": "body",
+            "placement": "top",
+            "content": {
+              "heading": "🎉 You're All Set!",
+              "description": "You now know how to monitor your AI's execution and understand trace details. Every trace will be automatically evaluated, and as soon as we detect the first error, we'll automatically fix your AI.",
+              "variant": "success",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🎉"
+            },
+            "actions": [
+              {
+                "text": "Let's Fix Some AI!",
+                "type": "primary",
+                "action": "nextStep",
+                "analytics": "first_trace_tour_complete"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          }
+        ]
+      },
+      {
+        "id": "first-optimization-celebration",
+        "name": "First Optimization",
+        "description": "Celebrate the user's first AI optimization",
+        "type": "guided",
+        "icon": "Rocket",
+        "settings": {
+          "canSkip": true,
+          "showOnlyOnce": true,
+          "canReplay": true,
+          "showProgress": true,
+          "showAssistant": false,
+          "assistantPosition": "bottom-center",
+          "backdrop": false,
+          "escapeToClose": true,
+          "clickOutsideToClose": false
+        },
+        "analytics": {
+          "trackSteps": true,
+          "trackCompletions": true,
+          "trackSkips": true,
+          "trackTimeSpent": true
+        },
+        "steps": [
+          {
+            "stepNumber": 1,
+            "id": "optimization-celebration",
+            "type": "banner",
+            "title": "First Optimization",
+            "target": "body",
+            "placement": "center",
+            "content": {
+              "heading": "🎉 First Optimization Complete!",
+              "description": "Your AI just got smarter! handit.ai detected an issue and automatically improved your prompt. This is just the beginning - your AI will keep evolving.",
+              "variant": "success",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🚀"
+            },
+            "actions": [
+              {
+                "text": "Check Optimization",
+                "type": "primary",
+                "action": "nextStep",
+                "analytics": "first_optimization_celebration_view"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          },
+          {
+            "stepNumber": 2,
+            "id": "pr-ready-banner",
+            "type": "banner",
+            "title": "PR Ready for Review",
+            "target": "body",
+            "placement": "center",
+            "showOnlyIf": {
+              "field": "hasOptimizationPRs",
+              "value": true
+            },
+            "content": {
+              "heading": "📋 Your Optimization PR is Ready!",
+              "description": "handit.ai has created a pull request with your optimized prompt. Review the changes and merge when you're ready to deploy the improvements.",
+              "variant": "info",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "📋"
+            },
+            "actions": [
+              {
+                "text": "View PR",
+                "type": "primary",
+                "action": "openPR",
+                "analytics": "first_optimization_pr_view"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          },
+          {
+            "stepNumber": 3,
+            "id": "github-connection-offer",
+            "type": "banner",
+            "title": "Connect GitHub for Automatic Fixes",
+            "target": "body",
+            "placement": "center",
+            "showOnlyIf": {
+              "field": "hasOptimizationPRs",
+              "value": false
+            },
+            "content": {
+              "heading": "🚀 Connect GitHub for Automatic Fixes!",
+              "description": "Connect your GitHub repository and handit.ai will automatically create pull requests with optimized prompts directly in your code. No manual work needed!",
+              "variant": "info",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🔗"
+            },
+            "actions": [
+              {
+                "text": "Connect GitHub",
+                "type": "primary",
+                "action": "openGitHubNoAdvance",
+                "url": "https://github.com/apps/handit-ai/installations/new?state=${companyId}",
+                "analytics": "optimization_github_connect"
+              },
+              {
+                "text": "Continue to Release Hub",
+                "type": "secondary",
+                "action": "nextStep",
+                "analytics": "optimization_skip_github_connect"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          },
+          {
+            "stepNumber": 4,
+            "id": "navigate-to-release-hub",
+            "type": "cursor-only",
+            "title": "Navigate to Release Hub",
+            "target": "[data-nav-item='Release Hub']",
+            "placement": "right",
+            "showOnlyIf": {
+              "field": "hasOptimizationPRs",
+              "value": false
+            },
+            "content": {
+              "heading": "Go to Release Hub",
+              "description": "Let's check your optimization in the Release Hub where you can see all your model versions and improvements."
+            },
+            "actions": [
+              {
+                "text": "Skip",
+                "type": "secondary",
+                "action": "nextStep",
+                "analytics": "release_hub_navigation_skipped"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false,
+            "advanceOnClick": {
+              "target": "[data-nav-item='Release Hub']",
+              "description": "Click on Release Hub in the navigation"
+            },
+            "waitForElement": {
+              "target": "[data-nav-item='Release Hub']",
+              "timeout": 30000,
+              "checkInterval": 1000
+            },
+            "cursorGuidance": {
+              "enabled": true,
+              "delay": 1000,
+              "steps": [
+                {
+                  "target": "[data-nav-item='Release Hub']",
+                  "targetText": "Release Hub",
+                  "highlight": { "style": "glow", "intensity": "high", "duration": 3000 },
+                  "animation": { "duration": 1200, "easing": "ease-in-out", "path": "curved" },
+                  "action": { "type": "hover" },
+                  "instruction": {
+                    "title": "Click on Release Hub",
+                    "description": "This is where you'll find all your optimized models and can compare original vs optimized versions.",
+                    "tip": "Your optimization journey starts here",
+                    "position": "top",
+                    "showNearTarget": true
+                  },
+                  "delay": 100
+                }
+              ]
+            }
+          },
+          {
+            "stepNumber": 5,
+            "id": "click-first-optimized-model",
+            "type": "cursor-only",
+            "title": "View First Optimized Model",
+            "target": "[data-testid='improvement-row-first']",
+            "placement": "right",
+            "showOnlyIf": {
+              "field": "hasOptimizationPRs",
+              "value": false
+            },
+            "content": {
+              "heading": "Click on First Optimized Model",
+              "description": "See your first optimization! Click on the model with the optimization badge to explore the improvements."
+            },
+            "actions": [
+              {
+                "text": "Skip",
+                "type": "secondary",
+                "action": "nextStep",
+                "analytics": "optimized_model_selection_skipped"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false,
+            "advanceOnClick": {
+              "target": "[data-testid='improvement-row-first']",
+              "description": "Click on the first optimized model"
+            },
+            "waitForElement": {
+              "target": "[data-testid='improvement-row-first']",
+              "timeout": 15000,
+              "checkInterval": 1000
+            },
+            "cursorGuidance": {
+              "enabled": true,
+              "delay": 1000,
+              "steps": [
+                {
+                  "target": "[data-testid='improvement-row-first']",
+                  "targetText": "First Optimized Model",
+                  "highlight": { "style": "glow", "intensity": "high", "duration": 3000 },
+                  "animation": { "duration": 1200, "easing": "ease-in-out", "path": "curved" },
+                  "action": { "type": "hover" },
+                  "instruction": {
+                    "title": "Click on this Optimized Model",
+                    "description": "This model has been automatically improved by handit.ai. You'll see the original vs optimized version with performance metrics.",
+                    "tip": "Continuous improvement in action",
+                    "position": "top",
+                    "showNearTarget": true
+                  },
+                  "delay": 100
+                }
+              ]
+            }
+          },
+          {
+            "stepNumber": 6,
+            "id": "optimization-comparison-guide",
+            "type": "banner",
+            "title": "Optimization Comparison Guide",
+            "target": "body",
+            "placement": "top",
+            "showOnlyIf": {
+              "field": "hasOptimizationPRs",
+              "value": false
+            },
+            "content": {
+              "heading": "🎯 Your Optimization is Ready!",
+              "description": "Here you can see the differences between your original and optimized prompt, along with performance metrics. You can deploy the optimized version when you're ready to improve your AI's performance.",
+              "variant": "success",
+              "showCloseButton": false,
+              "autoHide": false,
+              "icon": "🎯"
+            },
+            "actions": [
+              {
+                "text": "Complete Tour",
+                "type": "primary",
+                "action": "finishTour",
+                "analytics": "optimization_comparison_guide_complete"
+              }
+            ],
+            "duration": null,
+            "autoAdvance": false
+          }
+        ]
+      }
+    ],
+    "dynamicContent": {
+      "recommendedEvaluators": {
+        "document-ai": {
+          "name": "Completeness Evaluator",
+          "description": "Ensures all required fields are extracted from documents",
+          "icon": "document-check",
+          "benefits": ["Catches missing data", "Improves extraction accuracy", "Reduces manual review"],
+          "examples": ["Invoice amounts", "Contract dates", "Form fields"],
+          "defaultCriteria": "Check that all key fields are extracted: amounts, dates, names, and contact information. Verify that numerical values are properly formatted and dates are correctly parsed."
+        },
+        "custom-agent": {
+          "name": "Factual Accuracy Evaluator", 
+          "description": "Verifies that responses are accurate and helpful",
+          "icon": "shield-check",
+          "benefits": ["Prevents hallucinations", "Improves user trust", "Reduces errors"],
+          "examples": ["Fact verification", "Source accuracy", "Response relevance"],
+          "defaultCriteria": "Verify that responses are factually correct, relevant to the user's question, and based on reliable sources. Check for any contradictions or unsupported claims."
+        },
+        "langchain-rag": {
+          "name": "Relevance & Citation Evaluator",
+          "description": "Ensures responses are relevant and properly cite sources",
+          "icon": "book-open",
+          "benefits": ["Better source usage", "Improved relevance", "Proper citations"],
+          "examples": ["Source relevance", "Citation accuracy", "Answer completeness"],
+          "defaultCriteria": "Check that responses are relevant to the query, properly cite sources, and provide comprehensive answers based on the retrieved documents."
+        }
+      }
+    },
+    "analytics": {
+      "events": {
+        "tour_started": ["tourId", "userId", "timestamp"],
+        "step_completed": ["tourId", "stepId", "userId", "timeSpent", "timestamp"],
+        "tour_completed": ["tourId", "userId", "totalTime", "timestamp"],
+        "tour_skipped": ["tourId", "stepId", "userId", "reason", "timestamp"],
+        "action_clicked": ["tourId", "stepId", "actionType", "actionText", "userId", "timestamp"],
+        "integration_completed": ["userId", "agentType", "timestamp"],
+        "first_trace_received": ["userId", "traceId", "timestamp"],
+        "evaluator_created": ["userId", "evaluatorType", "timestamp"],
+        "optimization_generated": ["userId", "improvementPercentage", "timestamp"]
+      }
+    },
+    "personalizations": {
+      "agentType": {
+        "document-ai": {
+          "terminology": {
+            "agent": "document processor",
+            "inputs": "documents",
+            "outputs": "extracted data"
+          },
+          "examples": {
+            "inputExample": "invoice_2024.pdf",
+            "outputExample": "Extracted 12 fields including amount, vendor, due date"
+          }
+        },
+        "custom-agent": {
+          "terminology": {
+            "agent": "AI assistant", 
+            "inputs": "user queries",
+            "outputs": "responses"
+          },
+          "examples": {
+            "inputExample": "How can I reset my password?",
+            "outputExample": "Step-by-step password reset instructions"
+          }
+        },
+        "langchain-rag": {
+          "terminology": {
+            "agent": "knowledge assistant",
+            "inputs": "questions",
+            "outputs": "answers with sources"
+          },
+          "examples": {
+            "inputExample": "What is our refund policy?",
+            "outputExample": "Based on company policy document: 30-day returns..."
+          }
+        }
+      }
+    }
+  }
+} 

@@ -287,6 +287,7 @@ export function PromptVersionComparison({
   onLeftAccuracyChange,
   onRightAccuracyChange,
   bgColor,
+  defaultRightVersion,
 }) {
   const [leftVersion, setLeftVersion] = React.useState(null);
   const [rightVersion, setRightVersion] = React.useState(null);
@@ -313,15 +314,21 @@ export function PromptVersionComparison({
     if (promptVersions?.length > 0) {
       const baseVersion = promptVersions.find((v) => v.isBase);
       const latestVersion = promptVersions.reduce((latest, current) =>
-        !latest || current.version > latest.version ? current : latest
+        !latest || parseInt(current.version) > parseInt(latest.version) ? current : latest
       );
+      if (defaultRightVersion) {
+        setRightVersion(defaultRightVersion);
+        onRightModelChange(promptVersions.find((v) => v.id == defaultRightVersion));
+      } else {
+        setRightVersion(latestVersion?.id || promptVersions[promptVersions.length - 1].id);
+        onRightModelChange(latestVersion || promptVersions[promptVersions.length - 1]);
+
+      }
 
       setLeftVersion(baseVersion?.id || promptVersions[0].id);
-      setRightVersion(latestVersion?.id || promptVersions[promptVersions.length - 1].id);
-      onRightModelChange(latestVersion || promptVersions[promptVersions.length - 1]);
       onLeftModelChange(baseVersion || promptVersions[0]);
     }
-  }, [promptVersions]);
+  }, [promptVersions, defaultRightVersion]);
 
   const handleDeploy = (versionId) => {
     setDeployAnchorEl(null);

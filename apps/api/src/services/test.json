@@ -1,0 +1,1 @@
+{"evaluations":[{"score":5,"analysis":"The “extracted output incorrectly classified the document,"errors":["The document was incorrectly classified"],"evaluator":"correctness"}],"correct":false,"relevance":5.333333333333333,"coherence":5.333333333333333,"correctness":8,"completeness":0,"format_adherence":8,"accuracy":5.333333333333333}

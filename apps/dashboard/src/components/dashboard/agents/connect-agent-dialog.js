@@ -1,9 +1,8 @@
 /**
  * Connect Agent Dialog Component
  * 
- * A dialog component that provides multiple methods for connecting and setting up
- * an agent in different environments. Supports MCP server setup, AI assistant setup,
- * and manual configuration options with code examples in both Python and JavaScript.
+ * A dialog component that provides a personalized setup experience
+ * by gathering information about the user's use case, tools, and agent description.
  */
 
 import * as React from 'react';
@@ -15,269 +14,25 @@ import {
   DialogTitle,
   IconButton,
   Stack,
-  Tab,
-  Tabs,
   Typography,
-  Paper,
+  TextField,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  CircularProgress,
+  Tabs,
+  Tab,
 } from '@mui/material';
-import { XCircle, Download, Cursor, Code, Robot } from '@phosphor-icons/react';
-import {
-  useDownloadMCPSetupMutation,
-  useDownloadContextSetupMutation,
-  useDownloadConfigSetupMutation,
-  handleBlobDownload
-} from '@/services/setupService';
-import { atomDark, materialDark, materialLight, vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { XIcon } from '@phosphor-icons/react/dist/ssr/X';
-import { Copy as CopyIcon } from '@phosphor-icons/react';
-
-/**
- * Converts a string to camelCase format
- * @param {string} str - The string to convert
- * @returns {string} The camelCase formatted string
- */
-const toCamelCase = (str) => {
-  return str?.toLowerCase()
-    .replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => chr.toUpperCase())
-    .replace(/^[A-Z]/, c => c.toLowerCase());
-};
-
-/**
- * Converts a string to snake_case format
- * @param {string} str - The string to convert
- * @returns {string} The snake_case formatted string
- */
-const toSnakeCase = (str) => {
-  return str?.replace(/([A-Z])/g, '_$1')
-    .toLowerCase()
-    .replace(/^_/, '')
-    .replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => '_' + chr.toLowerCase())
-    .replace(/^_/, '');
-};
-
-/**
- * CodeBlock Component
- * A reusable component for displaying code snippets with copy functionality
- * 
- * @param {Object} props - Component props
- * @param {string} props.code - The code to display
- * @param {string} props.language - The programming language for syntax highlighting
- * @returns {JSX.Element} The code block component
- */
-const CodeBlock = ({ code, language }) => {
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <Box
-      sx={{
-        position: 'relative',
-        backgroundColor: 'grey.900',
-        borderRadius: 1,
-        overflow: 'hidden',
-        marginTop: 3,
-        marginBottom: 3,
-      }}
-    >
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{
-          position: 'absolute',
-          right: 8,
-          top: 8,
-          zIndex: 1,
-        }}
-      >
-        <Button
-          size="small"
-          variant="text"
-          onClick={handleCopy}
-          startIcon={<CopyIcon />}
-          sx={{
-            color: 'grey.300',
-            '&:hover': {
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            },
-          }}
-        >
-          {copied ? 'Copied!' : 'Copy'}
-        </Button>
-      </Stack>
-      <SyntaxHighlighter
-        language={language}
-        style={vscDarkPlus}
-        customStyle={{
-          margin: 0,
-          padding: '16px',
-          background: '#1e1e1e',
-          borderRadius: '4px',
-          fontSize: '14px',
-        }}
-      >
-        {code}
-      </SyntaxHighlighter>
-    </Box>
-  );
-};
-
-/**
- * Formats agent configuration for different programming languages
- * 
- * @param {Object} agent - The agent object containing configuration data
- * @param {string} [language='javascript'] - The target programming language
- * @returns {Object|null} The formatted configuration object
- */
-const formatAgentConfig = (agent, language = 'javascript') => {
-  if (!agent) return null;
-
-  const transformCase = language === 'javascript' ? toCamelCase : toSnakeCase;
-
-  // Create an object with model names as keys and their slugs as values
-  const models = agent.AgentNodes.map(node => {
-    if (node.type === 'model') {
-      const modelName = transformCase(node.Model?.name);
-      return {
-        [modelName]: agent.slug + '-' + node.Model?.slug
-      }
-    } else {
-      return {
-        [transformCase(node.name)]: agent.slug + '-' + node.slug
-      }
-    }
-  });
-  const modelConfig = models.reduce((acc, node) => {
-    return {
-      ...acc,
-      ...node
-    }
-  }, {});
-
-  // Format the configuration object with transformed agent name
-  const config = {
-    [transformCase(agent.name)]: {
-      ...modelConfig
-    }
-  };
-
-  return config;
-};
-
-/**
- * Generates implementation examples for different programming languages
- * 
- * @param {number} tabValue - The selected tab index
- * @param {Object} currentAgent - The current agent object
- * @param {string} apiToken - The API token for authentication
- * @returns {string} The implementation example code
- */
-const getImplementationExample = (tabValue, currentAgent, apiToken) => {
-  if (tabValue === 0) {
-    return `from handit import HanditTracker
-from openai import OpenAI
-
-# Initialize OpenAI client
-client = OpenAI(api_key="your-api-key")
-
-# Initialize Handit tracker
-tracker = HanditTracker()
-tracker.config(api_key="${apiToken}")
-
-# Define your agent class
-class MyAgent:
-    def __init__(self):
-        self.client = OpenAI(api_key="your-api-key")
-    
-    @tracker.start_agent_tracing()
-    async def process(self, input_data):
-        """Main agent processing function wrapped with tracing"""
-        # Define node execution (e.g., GPT call)
-        async def execute_gpt_node(messages):
-            response = await self.client.chat.completions.create(
-                messages=messages,
-                model="gpt-4"
-            )
-            return response
-        
-        # Option 1: Using decorator for node tracing
-        @tracker.trace_agent_node(agent_config["${toSnakeCase(currentAgent?.name)}"]["${currentAgent?.AgentNodes[0]?.name ?
-        toSnakeCase(currentAgent.AgentNodes[0].name) :
-        'gpt_four_model'
-      }"])
-        async def traced_gpt_node(messages):
-            return await execute_gpt_node(messages)
-        
-        # Option 2: Using wrapper function for synchronous nodes
-        traced_gpt_sync = tracker.trace_agent_node_func_sync(
-            execute_gpt_node,
-            key=agent_config["${toSnakeCase(currentAgent?.name)}"]["${currentAgent?.AgentNodes[0]?.name ?
-        toSnakeCase(currentAgent.AgentNodes[0].name) :
-        'gpt_four_model'
-      }"]
-        )
-        
-        # Execute node with tracing
-        result = await traced_gpt_node(input_data)
-        return result
-
-# Initialize and use the agent
-agent = MyAgent()
-response = await agent.process({"messages": messages})`;
-  }
-
-  return `import { startAgentTracing, traceAgentNode } from '@handit.ai/node';
-import { OpenAI } from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Define your agent function
-async function myAgent(inputData) {
-  // Define node execution (e.g., GPT call)
-  const executeGptNode = async (messages) => {
-    const response = await openai.chat.completions.create({
-      messages,
-      model: "gpt-4"
-    });
-    return response;
-  };
-  
-  // Wrap node execution with tracing
-  const tracedGpt = traceAgentNode({
-    agentNodeId: agentsTrackingConfig.${toCamelCase(currentAgent?.name)}.${currentAgent?.AgentNodes[0]?.name ?
-      toCamelCase(currentAgent.AgentNodes[0].name) :
-      'gptFourModel'
-    },
-    callback: executeGptNode
-  });
-  
-  // Execute node with tracing
-  const result = await tracedGpt(inputData);
-  return result;
-}
-
-// Wrap the entire agent with tracing
-const tracedAgent = startAgentTracing(myAgent);
-
-// Use the traced agent
-const response = await tracedAgent({ messages });`;
-};
+import { XCircle } from '@phosphor-icons/react';
 
 /**
  * ConnectAgentDialog Component
  * 
- * A dialog component that provides multiple methods for connecting and setting up
- * an agent in different environments. Includes three main setup options:
- * 1. MCP Server Setup - For Cursor or Claude Code users
- * 2. AI Assistant Setup - For AI-guided configuration
- * 3. Manual Setup - For advanced customization with code examples
+ * A personalized agent connection dialog that gathers information about:
+ * 1. Use case they are working on
+ * 2. Language or tool they are using
+ * 3. Description of their agent and main components
  * 
  * @param {Object} props - Component props
  * @param {string} props.agentId - The ID of the agent to connect
@@ -288,67 +43,93 @@ const response = await tracedAgent({ messages });`;
  * @returns {JSX.Element} The connect agent dialog component
  */
 export function ConnectAgentDialog({ agentId, currentAgent, apiToken, onClose, open }) {
-  // State management
-  const [tabValue, setTabValue] = React.useState(0);
-  const [loading, setLoading] = React.useState({
-    mcp: false,
-    context: false,
-    config: false
-  });
-  const [codeTabValue, setCodeTabValue] = React.useState(1); // 0 for Python, 1 for JavaScript
+  // State management for form data
+  const [useCase, setUseCase] = React.useState('');
+  const [language, setLanguage] = React.useState('');
+  const [agentDescription, setAgentDescription] = React.useState('');
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [generatedSetup, setGeneratedSetup] = React.useState(null);
+  const [currentTab, setCurrentTab] = React.useState(0);
+  
+  // Add state for connection test
+  const [connectionStatus, setConnectionStatus] = React.useState(null); // null, 'testing', 'success', 'error'
+  const [connectionMessage, setConnectionMessage] = React.useState('');
+  const [isTestingConnection, setIsTestingConnection] = React.useState(false);
 
-  /**
-   * Handles the download of setup files
-   * @param {string} type - The type of setup to download ('mcp', 'context', or 'config')
-   */
-  const handleDownload = async (type) => {
-    setLoading(prev => ({ ...prev, [type]: true }));
+  // Handle dialog close from onboarding
+  React.useEffect(() => {
+    const handleCloseDialog = () => {
+      onClose();
+    };
+    
+    window.addEventListener('onboarding:close-connect-dialog', handleCloseDialog);
+    return () => {
+      window.removeEventListener('onboarding:close-connect-dialog', handleCloseDialog);
+    };
+  }, [onClose]);
+
+  // Use case options
+  const useCaseOptions = [
+    { value: 'document-processing', label: 'Document Processing & Analysis' },
+    { value: 'customer-support', label: 'Customer Support & Chat' },
+    { value: 'content-generation', label: 'Content Generation & Writing' },
+    { value: 'data-extraction', label: 'Data Extraction & Mining' },
+    { value: 'code-analysis', label: 'Code Analysis & Review' },
+    { value: 'research-assistant', label: 'Research & Knowledge Assistant' },
+    { value: 'sales-automation', label: 'Sales & Lead Automation' },
+    { value: 'workflow-automation', label: 'Workflow & Process Automation' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  // Language/tool options
+  const languageOptions = [
+    { value: 'python', label: 'Python' },
+    { value: 'javascript', label: 'JavaScript/Node.js' },
+    { value: 'typescript', label: 'TypeScript' },
+    { value: 'langchain', label: 'LangChain' },
+    { value: 'llamaindex', label: 'LlamaIndex' },
+    { value: 'openai-api', label: 'OpenAI API' },
+    { value: 'anthropic-api', label: 'Anthropic API' },
+    { value: 'huggingface', label: 'HuggingFace' },
+    { value: 'fastapi', label: 'FastAPI' },
+    { value: 'flask', label: 'Flask' },
+    { value: 'express', label: 'Express.js' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  const handleSubmit = async () => {
+    setIsGenerating(true);
     try {
-      let url;
-      let filename;
-
-      console.log(`Starting download for ${type}...`);
-
-      switch (type) {
-        case 'mcp':
-          url = `${process.env.NEXT_PUBLIC_API_URL}setup/mcp/${agentId}`;
-          filename = 'mcp-setup.zip';
-          break;
-        case 'context':
-          url = `${process.env.NEXT_PUBLIC_API_URL}setup/context/${agentId}`;
-          filename = 'context-setup.zip';
-          break;
-        case 'config':
-          url = `${process.env.NEXT_PUBLIC_API_URL}setup/config/${agentId}`;
-          filename = 'config-setup.json';
-          break;
-      }
-
-      const response = await fetch(url);
+      // Send the form data to generate personalized setup
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/setup/generate-personalized`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          useCase,
+          language,
+          agentDescription,
+          apiToken: apiToken // Include the user's API token
+        })
+      });
 
       if (!response.ok) {
-        throw new Error(`Failed to download ${type} setup: ${response.statusText}`);
+        throw new Error('Failed to generate personalized setup');
       }
 
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-
-      // Create a temporary link element
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = filename;
-
-      // Append to body, click, and cleanup
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
-
-      console.log(`Download completed for ${type}`);
+      const result = await response.json();
+      
+      // Store the generated guide
+      setGeneratedSetup(result);
+      
+      // Log the generated guide for debugging
+      console.log('Generated personalized setup:', result);
+      
     } catch (error) {
-      console.error(`Error downloading ${type} setup:`, error);
+      console.error('Error generating setup:', error);
     } finally {
-      setLoading(prev => ({ ...prev, [type]: false }));
+      setIsGenerating(false);
     }
   };
 
@@ -368,7 +149,7 @@ export function ConnectAgentDialog({ agentId, currentAgent, apiToken, onClose, o
       <DialogTitle>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="h6">
-            Connect {currentAgent?.name || 'Agent'}
+            Connect {currentAgent?.name || 'Your Agent'}
           </Typography>
           <IconButton onClick={onClose}>
             <XCircle />
@@ -376,267 +157,357 @@ export function ConnectAgentDialog({ agentId, currentAgent, apiToken, onClose, o
         </Stack>
       </DialogTitle>
 
-      <DialogContent>
-        {/* API Token Display */}
-        <Paper
-          sx={{
-            p: 2,
-            mb: 3,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderRadius: 1
-          }}
+      <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '80vh', position: 'relative' }}>
+        {/* Tabs */}
+        <Tabs 
+          value={currentTab} 
+          onChange={(e, newValue) => setCurrentTab(newValue)}
+          sx={{ borderBottom: 1, borderColor: 'divider', px: 3, pt: 1, flexShrink: 0 }}
         >
-          <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
-            Your API Token:
-          </Typography>
-          <Box sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            bgcolor: 'rgba(255, 255, 255, 0.1)',
-            px: 2,
-            py: 1,
-            borderRadius: 1
-          }}>
-            <Typography
-              variant="body2"
-              sx={{
-                fontFamily: 'monospace',
-                letterSpacing: '0.5px'
-              }}
-            >
-              {apiToken}
-            </Typography>
-            <IconButton
-              size="small"
-              onClick={() => {
-                navigator.clipboard.writeText(apiToken);
-              }}
-              sx={{
-                color: 'inherit',
-                '&:hover': {
-                  bgcolor: 'rgba(255, 255, 255, 0.2)'
-                }
-              }}
-            >
-              <CopyIcon size={16} />
-            </IconButton>
-          </Box>
-        </Paper>
-
-        {/* Setup Method Tabs */}
-        <Tabs
-          value={tabValue}
-          onChange={(e, newValue) => setTabValue(newValue)}
-          sx={{
-            mb: 3,
-            '& .MuiTab-root': {
-              minHeight: 56,
-              px: 3,
-            },
-          }}
-        >
-          <Tab
-            icon={<Cursor />}
-            label="MCP Server"
-            iconPosition="start"
-            sx={{ flexDirection: 'row', gap: 1 }}
-          />
-          <Tab
-            icon={<Robot />}
-            label="AI Assistant"
-            iconPosition="start"
-            sx={{ flexDirection: 'row', gap: 1 }}
-          />
-          <Tab
-            icon={<Code />}
-            label="Manual Setup"
-            iconPosition="start"
-            sx={{ flexDirection: 'row', gap: 1 }}
-          />
+          <Tab label="Setup Questions" />
+          <Tab label="Your Guide" disabled={!generatedSetup} />
         </Tabs>
 
-        {/* MCP Server Setup Section */}
-        {tabValue === 0 && (
-          <Stack spacing={3}>
+        {/* Tab Content */}
+        <Box sx={{ 
+          p: 3, 
+          flex: 1, 
+          overflow: 'auto',
+          // Hide scrollbar but keep scrolling functionality
+          scrollbarWidth: 'none', // Firefox
+          '&::-webkit-scrollbar': { 
+            display: 'none' // WebKit browsers
+          },
+          // Add padding bottom for the sticky footer when on guide tab
+          pb: currentTab === 1 && generatedSetup ? 10 : 3
+        }}>
+          {currentTab === 0 && (
             <Box>
-              <Typography variant="subtitle1" color="text.primary" gutterBottom>
-                Recommended for Cursor or Claude Code users
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                This method provides the most streamlined setup experience through an MCP server.
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<Download />}
-                onClick={() => handleDownload('mcp')}
-                disabled={loading?.mcp}
-                sx={{ mb: 2 }}
-              >
-                {loading?.mcp ? 'Downloading...' : 'Download MCP Server Files'}
-              </Button>
-              <Box sx={{ bgcolor: 'background.neutral', p: 2, borderRadius: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Setup Instructions:
-                </Typography>
-                <Stack component="ol" spacing={1} sx={{ pl: 2 }}>
-                  <Typography component="li" variant="body2">Extract the zip file to your project directory</Typography>
-                  <Typography component="li" variant="body2">Open Cursor Settings - Features - MCP</Typography>
-                  <Typography component="li" variant="body2">The MCP server will be automatically detected and listed</Typography>
-                  <Typography component="li" variant="body2">Click the enable button to load the available tools</Typography>
-                  <Typography component="li" variant="body2">Type in Cursor: "configure my agent on these files ... based on the MCP handit://context"</Typography>
-                </Stack>
-              </Box>
-            </Box>
-          </Stack>
-        )}
-
-        {/* AI Assistant Setup Section */}
-        {tabValue === 1 && (
-          <Stack spacing={3}>
-            <Box>
-              <Typography variant="subtitle1" color="text.primary" gutterBottom>
-                AI-Guided Setup Process
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Let our AI assistant guide you through the setup process and automatically configure your agent.
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<Download />}
-                onClick={() => handleDownload('context')}
-                disabled={loading?.context}
-                sx={{ mb: 2 }}
-              >
-                {loading?.context ? 'Downloading...' : 'Download Context Files'}
-              </Button>
-              <Box sx={{ bgcolor: 'background.neutral', p: 2, borderRadius: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Setup Instructions:
-                </Typography>
-                <Stack component="ol" spacing={1} sx={{ pl: 2 }}>
-                  <Typography component="li" variant="body2">Extract the context files to your project directory</Typography>
-                  <Typography component="li" variant="body2">Open your AI assistant (Cursor, Claude, or similar)</Typography>
-                  <Typography component="li" variant="body2">Type: "configure my agent on these files ... based on the context"</Typography>
-                  <Typography component="li" variant="body2">Review and accept the suggested changes</Typography>
-                </Stack>
-              </Box>
-            </Box>
-          </Stack>
-        )}
-
-        {/* Manual Setup Section */}
-        {tabValue === 2 && (
-          <Stack spacing={3}>
-            <Box>
-              <Typography variant="subtitle1" color="text.primary" gutterBottom>
-                Advanced customization for specific requirements
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                The most customizable method, allowing you to manually configure Handit.AI in your codebase.
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                Help us personalize your experience by telling us about your agent and how you're planning to use it.
               </Typography>
 
-              {/* Installation Instructions */}
-              <Box>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                  <Typography variant="subtitle2" sx={{ fontSize: '0.875rem' }}>
-                    1. Install Handit SDK for AI monitoring and tracking
+              <Stack spacing={4}>
+                {/* Question 1: Use Case */}
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    1. What use case are you working on?
                   </Typography>
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant={codeTabValue === 0 ? "contained" : "outlined"}
-                      onClick={() => setCodeTabValue(0)}
-                      sx={{
-                        borderRadius: 1,
-                        minWidth: '100px',
-                        backgroundColor: codeTabValue === 0 ? 'primary.main' : 'transparent',
-                        borderColor: 'primary.main',
-                        color: codeTabValue === 0 ? 'primary.contrastText' : 'primary.main',
-                        '&:hover': {
-                          backgroundColor: codeTabValue === 0 ? 'primary.dark' : 'primary.main',
-                          color: 'primary.contrastText',
-                        }
-                      }}
+                  <FormControl fullWidth>
+                    <InputLabel>Select your primary use case</InputLabel>
+                    <Select
+                      value={useCase}
+                      label="Select your primary use case"
+                      onChange={(e) => setUseCase(e.target.value)}
+                      data-testid="use-case-select"
                     >
-                      Python
-                    </Button>
-                    <Button
-                      variant={codeTabValue === 1 ? "contained" : "outlined"}
-                      onClick={() => setCodeTabValue(1)}
-                      sx={{
-                        borderRadius: 1,
-                        minWidth: '100px',
-                        backgroundColor: codeTabValue === 1 ? 'primary.main' : 'transparent',
-                        borderColor: 'primary.main',
-                        color: codeTabValue === 1 ? 'primary.contrastText' : 'primary.main',
-                        '&:hover': {
-                          backgroundColor: codeTabValue === 1 ? 'primary.dark' : 'primary.main',
-                          color: 'primary.contrastText',
-                        }
-                      }}
+                      {useCaseOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                {/* Question 2: Language/Tool */}
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    2. Which language or tool are you using?
+                  </Typography>
+                  <FormControl fullWidth>
+                    <InputLabel>Select your primary language/tool</InputLabel>
+                    <Select
+                      value={language}
+                      label="Select your primary language/tool"
+                      onChange={(e) => setLanguage(e.target.value)}
+                      data-testid="language-select"
                     >
-                      JavaScript
+                      {languageOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                {/* Question 3: Agent Description */}
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    3. Describe your agent and its main components
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={4}
+                    placeholder="Tell us about your agent: What does it do? What are its main components or functions? What kind of inputs and outputs does it handle?"
+                    value={agentDescription}
+                    onChange={(e) => setAgentDescription(e.target.value)}
+                    data-testid="agent-description-input"
+                    helperText="This helps us provide better insights and recommendations for your specific agent."
+                  />
+                </Box>
+
+                {/* Submit Buttons */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
+                  {!generatedSetup && (
+                    <Button
+                      variant="contained"
+                      onClick={handleSubmit}
+                      disabled={!useCase || !language || !agentDescription.trim() || isGenerating}
+                      size="large"
+                      data-testid="generate-setup-button"
+                      startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : null}
+                    >
+                      {isGenerating ? 'Generating Setup...' : 'Generate Setup'}
                     </Button>
-                  </Stack>
-                </Stack>
-                <CodeBlock
-                  language={codeTabValue === 0 ? "python" : "javascript"}
-                  code={codeTabValue === 0 ? "pip install -U \"handit-sdk>=1.9.0\"" : "npm install @handit.ai/node"}
-                />
-              </Box>
+                  )}
+                  
+                  {generatedSetup && (
+                    <Button
+                      variant="outlined"
+                      onClick={() => setCurrentTab(1)}
+                      size="large"
+                      data-testid="view-instructions-button"
+                      sx={{ mr: 1 }}
+                    >
+                      View Instructions
+                    </Button>
+                  )}
+                </Box>
+              </Stack>
+            </Box>
+          )}
 
-              {/* Configuration Instructions */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontSize: '0.875rem' }}>
-                  2. Set up your environment with API keys and configuration
-                </Typography>
-                <CodeBlock
-                  language={codeTabValue === 0 ? "python" : "javascript"}
-                  code={codeTabValue === 0 ?
-                    `from handit import HanditTracker
+          {currentTab === 1 && generatedSetup && generatedSetup.guide && (
+            <Box>
+              <Typography variant="h5" sx={{ mb: 1, color: 'primary.main' }}>
+                🎉 {generatedSetup.guide.title}
+              </Typography>
+              
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                {generatedSetup.guide.description}
+              </Typography>
 
-tracker = HanditTracker()
-tracker.config(api_key="${apiToken}")` :
-                    `import { config } from '@handit.ai/node';
-
-// Configure with your API key
-config({
-  apiKey: '${apiToken}',  // Required: your API key
-});`
-                  }
-                />
-              </Box>
-
-              {/* Agent Configuration */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontSize: '0.875rem' }}>
-                  3. Configure your agent models with tracking identifiers
-                </Typography>
-                <CodeBlock
-                  language={codeTabValue === 0 ? "python" : "javascript"}
-                  code={codeTabValue === 0 ?
-                    `# Agent configuration for ${currentAgent?.name || 'Agent'}
-agent_config = ${JSON.stringify(formatAgentConfig(currentAgent, 'python'), null, 4)}` :
-                    `// Agent configuration for ${currentAgent?.name || 'Agent'}
-const agentsTrackingConfig = ${JSON.stringify(formatAgentConfig(currentAgent, 'javascript'), null, 2)}`
-                  }
-                />
-              </Box>
-
-              {/* Implementation Example */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontSize: '0.875rem' }}>
-                  4. Implement AI agent with automatic tracing
-                </Typography>
-                <CodeBlock
-                  language={codeTabValue === 0 ? "python" : "javascript"}
-                  code={getImplementationExample(codeTabValue, currentAgent, apiToken)}
-                />
+              
+              {generatedSetup.guide.steps.map((step, index) => (
+                <Box key={index} sx={{ mb: 4, pb: 3, borderBottom: index < generatedSetup.guide.steps.length - 1 ? 1 : 0, borderColor: 'divider' }}>
+                  <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                    {index + 1}. {step.title}
+                  </Typography>
+                  
+                  <Typography variant="body1" sx={{ mb: 3, lineHeight: 1.6 }}>
+                    {step.description}
+                  </Typography>
+                  
+                  {step.code && (
+                    <Box sx={{ position: 'relative' }}>
+                      <Box sx={{ 
+                        bgcolor: 'grey.900', 
+                        color: 'white',
+                        p: 2, 
+                        borderRadius: 1, 
+                        fontFamily: 'monospace',
+                        fontSize: '0.875rem',
+                        whiteSpace: 'pre-wrap',
+                        overflowX: 'auto',
+                        // Hide scrollbar but keep scrolling functionality
+                        scrollbarWidth: 'none', // Firefox
+                        '&::-webkit-scrollbar': { 
+                          display: 'none' // WebKit browsers
+                        }
+                      }}>
+                        {step.code}
+                      </Box>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          navigator.clipboard.writeText(step.code);
+                        }}
+                        sx={{ 
+                          position: 'absolute', 
+                          top: 8, 
+                          right: 20, 
+                          minWidth: 'auto',
+                          py: 0.5,
+                          px: 2,
+                          fontSize: '0.75rem',
+                          bgcolor: 'rgba(255,255,255,0.1)',
+                          color: 'white',
+                          borderColor: 'rgba(255,255,255,0.3)',
+                          '&:hover': {
+                            bgcolor: 'rgba(255,255,255,0.2)',
+                            borderColor: 'rgba(255,255,255,0.5)',
+                          }
+                        }}
+                        data-testid={`copy-step-${index + 1}-button`}
+                      >
+                        Copy
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
+              ))}
+              
+              <Box sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'divider', textAlign: 'center' }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    // Create a complete setup guide text for copying
+                    const fullGuide = `${generatedSetup.guide.title}\n\n${generatedSetup.guide.description}\n\n` +
+                      generatedSetup.guide.steps.map((step, index) => 
+                        `${index + 1}. ${step.title}\n${step.description}\n\n${step.code || ''}`
+                      ).join('\n\n');
+                    
+                    navigator.clipboard.writeText(fullGuide);
+                  }}
+                  size="medium"
+                  data-testid="copy-full-guide-button"
+                >
+                  📋 Copy Full Guide
+                </Button>
               </Box>
             </Box>
-          </Stack>
+          )}
+        </Box>
+
+        {/* Sticky Footer - Only shown on guide tab */}
+        {currentTab === 1 && generatedSetup && (
+          <Box sx={{ 
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            bgcolor: 'background.paper',
+            borderTop: 1,
+            borderColor: 'divider',
+            p: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 10
+          }}>
+            
+            {/* Connection Status Display */}
+            {connectionStatus && (
+              <Box sx={{ mb: 2 }}>
+                {connectionStatus === 'testing' && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: 'info.lighter', borderRadius: 1 }}>
+                    <CircularProgress size={20} />
+                    <Typography variant="body2" color="info.dark">
+                      Testing connection...
+                    </Typography>
+                  </Box>
+                )}
+                
+                {connectionStatus === 'success' && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: 'success.lighter', borderRadius: 1 }}>
+                    <Typography variant="body2" color="success.dark" sx={{ fontWeight: 600 }}>
+                      ✅ {connectionMessage}
+                    </Typography>
+                  </Box>
+                )}
+                
+                {connectionStatus === 'error' && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: 'error.lighter', borderRadius: 1 }}>
+                    <Typography variant="body2" color="error.dark" sx={{ fontWeight: 600 }}>
+                      ❌ {connectionMessage}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                onClick={() => setCurrentTab(0)}
+                size="medium"
+              >
+                ← Back to Questions
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                size="medium"
+                onClick={async () => {
+                  setIsTestingConnection(true);
+                  setConnectionStatus('testing');
+                  setConnectionMessage('');
+                  
+                  try {
+                    const token = localStorage.getItem('custom-auth-token');
+                    const headers = {
+                      'Content-Type': 'application/json',
+                    };
+                    
+                    if (token) {
+                      headers['Authorization'] = `Bearer ${token}`;
+                    }
+
+                    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/setup-assistant/test-connection`, {
+                      method: 'POST',
+                      headers,
+                      body: JSON.stringify({})
+                    });
+
+                    if (!response.ok) {
+                      let errorMessage = 'Connection test failed';
+                      if (response.status === 401) {
+                        errorMessage = 'Authentication failed. Please log in again.';
+                      } else if (response.status === 403) {
+                        errorMessage = 'Access denied. Please check your permissions.';
+                      }
+                      setConnectionStatus('error');
+                      setConnectionMessage(errorMessage);
+                      return;
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                      if (result.connected) {
+                        setConnectionStatus('success');
+                        setConnectionMessage(result.message || 'Connection successful! Your agent is properly connected.');
+                        
+                        // Notify onboarding system of successful connection
+                        setTimeout(() => {
+                          // Trigger onboarding advancement
+                          const onboardingEvent = new CustomEvent('onboarding:connection-success', {
+                            detail: { success: true, message: result.message }
+                          });
+                          window.dispatchEvent(onboardingEvent);
+                        }, 1000);
+                      } else {
+                        setConnectionStatus('error');
+                        setConnectionMessage(result.message || 'Connection failed. Please check your setup.');
+                      }
+                    } else {
+                      setConnectionStatus('error');
+                      setConnectionMessage(result.error || 'Connection test failed.');
+                    }
+                  } catch (error) {
+                    console.error('Error testing connection:', error);
+                    setConnectionStatus('error');
+                    setConnectionMessage('Unable to reach server. Please check your internet connection.');
+                  } finally {
+                    setIsTestingConnection(false);
+                  }
+                }}
+                disabled={isTestingConnection}
+                data-testid="test-connection-button"
+                sx={{ 
+                  px: 3, 
+                  py: 1,
+                  fontSize: '0.875rem',
+                  fontWeight: 600
+                }}
+              >
+                {isTestingConnection ? 'Testing...' : '🔗 Test Connection'}
+              </Button>
+            </Box>
+          </Box>
         )}
       </DialogContent>
     </Dialog>

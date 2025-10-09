@@ -1,8 +1,11 @@
 import * as promptService from '../services/promptVersionService.js';
 import db from '../../models/index.js';
 import ABTestModel from '../../models/aBTestModel.js';
+import { runReview } from '../services/insightsService.js';
+import { enhancePrompt } from '../services/promptEnhancementService.js';
+import { isCorrect } from '../services/entries/correctnessEvaluatorService.js';
 
-const { Agent, AgentNode, Model, AgentConnection } = db;
+const { Agent, AgentNode, Model, AgentConnection, ModelLog, Insights } = db;
 
 /**
  * getModelMetrics
@@ -32,8 +35,8 @@ const getModelMetrics = async (agentId) => {
       AND n.type = 'model'
       AND n.deleted_at IS NULL
       AND mml.created_at > '${new Date(
-      new Date() - 30 * 24 * 60 * 60 * 1000
-    ).toLocaleString()}'
+        new Date() - 30 * 24 * 60 * 60 * 1000
+      ).toLocaleString()}'
       AND n.deleted_at IS NULL
       GROUP BY 1,2,3,4,5,6,7,8
    ), optimized_model_metrics AS (
@@ -57,8 +60,8 @@ const getModelMetrics = async (agentId) => {
       AND n.type = 'model'
       AND n.deleted_at IS NULL
       AND mml.created_at > '${new Date(
-      new Date() - 30 * 24 * 60 * 60 * 1000
-    ).toLocaleString()}'
+        new Date() - 30 * 24 * 60 * 60 * 1000
+      ).toLocaleString()}'
             AND n.deleted_at IS NULL
 
       GROUP BY 1,2,3,4,5,6,7,8
@@ -210,7 +213,6 @@ const getModelMetrics = async (agentId) => {
   return { metricsByModel, aggregatedMetrics };
 };
 
-
 /**
  * Create a new prompt version for a model
  * Steps:
@@ -221,21 +223,20 @@ const getModelMetrics = async (agentId) => {
  *  5. Log the error
  */
 export async function createPrompt(req, res, next) {
-
-    try {
-        // 1. Read the model ID from the request path
-        const { modelId } = req.params;
-        // 2. Read the prompt text from the JSON payload
-        const { prompt } = req.body;
-        // 3. Call service to perform business logic & DB insertion
-        const newPrompt = await promptService.createPrompt(modelId, prompt);
-        // 4. Return success response with created object
-        return res.status(201).json({ success: true, data: newPrompt });
-    } catch (error) {
-        // 5. Log the error
-        console.error(error);
-        return res.status(500).json({ error: error.message });
-    }
+  try {
+    // 1. Read the model ID from the request path
+    const { modelId } = req.params;
+    // 2. Read the prompt text from the JSON payload
+    const { prompt } = req.body;
+    // 3. Call service to perform business logic & DB insertion
+    const newPrompt = await promptService.createPrompt(modelId, prompt);
+    // 4. Return success response with created object
+    return res.status(201).json({ success: true, data: newPrompt });
+  } catch (error) {
+    // 5. Log the error
+    console.error(error);
+    return res.status(500).json({ error: error.message });
+  }
 }
 
 /**
@@ -247,22 +248,24 @@ export async function createPrompt(req, res, next) {
  *          {404}            – { success: false, message: 'Prompt version not found' }
  */
 export async function getPrompt(req, res, next) {
-    try {
-        const { modelId, version } = req.params;
-        const promptVersion = await promptService.getPrompt(modelId, version);
+  try {
+    const { modelId, version } = req.params;
+    const promptVersion = await promptService.getPrompt(modelId, version);
 
-        if (!promptVersion) {
-            return res
-                .status(404)
-                .json({ success: false, message: `Prompt version ${version} not found for model ${modelId}` });
-        }
-
-        return res.status(200).json({ success: true, data: promptVersion });
-    } catch (error) {
-        next(error);
+    if (!promptVersion) {
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: `Prompt version ${version} not found for model ${modelId}`,
+        });
     }
-}
 
+    return res.status(200).json({ success: true, data: promptVersion });
+  } catch (error) {
+    next(error);
+  }
+}
 
 /**
  * @route   PUT /model/:modelId/prompt/:version
@@ -275,25 +278,32 @@ export async function getPrompt(req, res, next) {
  *          {404}            – { success: false, message: 'Prompt version not found' }
  */
 export async function updatePrompt(req, res, next) {
-    try {
-        const { modelId, version } = req.params;
-        const { prompt } = req.body;
+  try {
+    const { modelId, version } = req.params;
+    const { prompt } = req.body;
 
-        if (typeof prompt !== 'string' || !prompt.trim()) {
-            return res
-                .status(400)
-                .json({ success: false, message: 'Body must include non-empty string "prompt".' });
-        }
-
-        const updatedVersion = await promptService.updatePrompt(modelId, version, prompt);
-        return res.status(200).json({ success: true, data: updatedVersion });
-    } catch (err) {
-        // If our service threw a "not found" error, surface as 404
-        if (err.message.includes('not found')) {
-            return res.status(404).json({ success: false, message: err.message });
-        }
-        next(err);
+    if (typeof prompt !== 'string' || !prompt.trim()) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: 'Body must include non-empty string "prompt".',
+        });
     }
+
+    const updatedVersion = await promptService.updatePrompt(
+      modelId,
+      version,
+      prompt
+    );
+    return res.status(200).json({ success: true, data: updatedVersion });
+  } catch (err) {
+    // If our service threw a "not found" error, surface as 404
+    if (err.message.includes('not found')) {
+      return res.status(404).json({ success: false, message: err.message });
+    }
+    next(err);
+  }
 }
 
 /**
@@ -305,16 +315,16 @@ export async function updatePrompt(req, res, next) {
  *          {404}            – { success: false, message: 'Prompt version not found' }
  */
 export async function deletePrompt(req, res, next) {
-    try {
-        const { modelId, version } = req.params;
-        const deleted = await promptService.deletePromptVersion(modelId, version);
-        return res.status(200).json({ success: true, data: deleted });
-    } catch (err) {
-        if (err.message.includes('not found')) {
-            return res.status(404).json({ success: false, message: err.message });
-        }
-        next(err);
+  try {
+    const { modelId, version } = req.params;
+    const deleted = await promptService.deletePromptVersion(modelId, version);
+    return res.status(200).json({ success: true, data: deleted });
+  } catch (err) {
+    if (err.message.includes('not found')) {
+      return res.status(404).json({ success: false, message: err.message });
     }
+    next(err);
+  }
 }
 
 /**
@@ -325,21 +335,21 @@ export async function deletePrompt(req, res, next) {
  *          {404} - { success: false, message: 'No active prompt version found for model' }
  */
 export async function getActivePrompt(req, res, next) {
-    try {
-        const { modelId } = req.params;
-        const activeVersion = await promptService.getActivePrompt(modelId);
-        
-        if (!activeVersion) {
-            return res.status(404).json({ 
-                success: false, 
-                message: `No active prompt version found for model ${modelId}` 
-            });
-        }
+  try {
+    const { modelId } = req.params;
+    const activeVersion = await promptService.getActivePrompt(modelId);
 
-        return res.status(200).json({ success: true, data: activeVersion });
-    } catch (err) {
-        next(err);
+    if (!activeVersion) {
+      return res.status(404).json({
+        success: false,
+        message: `No active prompt version found for model ${modelId}`,
+      });
     }
+
+    return res.status(200).json({ success: true, data: activeVersion });
+  } catch (err) {
+    next(err);
+  }
 }
 
 /**
@@ -347,16 +357,20 @@ export async function getActivePrompt(req, res, next) {
  */
 
 export async function releasePrompt(req, res) {
-    try {
-        // 1. Extract params
-        const { modelId, version, originalModelId } = req.params; 
-        // 2. Call service      
-        const released = await promptService.releasePrompt(modelId, version, originalModelId); 
-        return res.status(200).json({ success: true, data: released });
-    } catch (error) {
-        console.error(error);                           // Log error
-        return res.status(500).json({ error: error.message }); // Send 500
-    }
+  try {
+    // 1. Extract params
+    const { modelId, version, originalModelId } = req.params;
+    // 2. Call service
+    const released = await promptService.releasePrompt(
+      modelId,
+      version,
+      originalModelId
+    );
+    return res.status(200).json({ success: true, data: released });
+  } catch (error) {
+    console.error(error); // Log error
+    return res.status(500).json({ error: error.message }); // Send 500
+  }
 }
 
 /**
@@ -364,12 +378,12 @@ export async function releasePrompt(req, res) {
  * @desc    Retrieve all prompt versions grouped by modelId
  */
 export async function getAllPrompts(req, res, next) {
-    try {
-        const grouped = await promptService.getPromptsGrouped();
-        return res.status(200).json({ success: true, data: grouped });
-    } catch (err) {
-        next(err);
-    }
+  try {
+    const grouped = await promptService.getPromptsGrouped();
+    return res.status(200).json({ success: true, data: grouped });
+  } catch (err) {
+    next(err);
+  }
 }
 
 /**
@@ -380,18 +394,18 @@ export async function getAllPrompts(req, res, next) {
  *          {404} - { success: false, message: 'No prompt versions found for model' }
  */
 export async function getAllPromptVersions(req, res, next) {
-    try {
-        const { modelId } = req.params;
-        const promptVersions = await promptService.getAllPromptVersions(modelId);
-        
-        if (!promptVersions || promptVersions.length === 0) {
-            return res.status(200).json({ success: true, data: [] });
-        }
+  try {
+    const { modelId } = req.params;
+    const promptVersions = await promptService.getAllPromptVersions(modelId);
 
-        return res.status(200).json({ success: true, data: promptVersions });
-    } catch (err) {
-        next(err);
+    if (!promptVersions || promptVersions.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
     }
+
+    return res.status(200).json({ success: true, data: promptVersions });
+  } catch (err) {
+    next(err);
+  }
 }
 
 /**
@@ -403,14 +417,17 @@ export async function getAllPromptVersions(req, res, next) {
  *          {404} - { success: false, message: 'No metrics found for this version' }
  */
 export async function getLastMetricsOfVersion(req, res, next) {
-    try {
-        const { modelId, version } = req.params;
-        const metrics = await promptService.getLastMetricsOfVersion(modelId, version);
+  try {
+    const { modelId, version } = req.params;
+    const metrics = await promptService.getLastMetricsOfVersion(
+      modelId,
+      version
+    );
 
-        return res.status(200).json({ success: true, data: metrics });
-    } catch (err) {
-        next(err);
-    }
+    return res.status(200).json({ success: true, data: metrics });
+  } catch (err) {
+    next(err);
+  }
 }
 
 /**
@@ -421,23 +438,246 @@ export async function getLastMetricsOfVersion(req, res, next) {
  * @returns {200} - { success: true, data: insights[] }
  */
 export async function getInsightsOfVersion(req, res, next) {
-    try {
-        const { modelId, version } = req.params;
-        const insights = await promptService.getInsightsOfVersion(modelId, version);
-        return res.status(200).json({ success: true, data: insights });
-    } catch (err) {
-        next(err);
+  try {
+    const { modelId, version } = req.params;
+    const insights = await promptService.getInsightsOfVersion(modelId, version);
+    return res.status(200).json({ success: true, data: insights });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Optimize a prompt based on a specific modelLog error
+ * @route POST /model/:modelId/prompt/optimize-from-error
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ * @returns {Promise<void>}
+ */
+export async function optimizePromptFromError(req, res) {
+  try {
+    const { modelId } = req.params;
+    const { modelLogId } = req.body;
+    console.log('modelId', modelId);
+    console.log('modelLogId', modelLogId);
+    // Validate input
+    if (!modelLogId || typeof modelLogId !== 'number') {
+      return res.status(400).json({
+        success: false,
+        message: 'modelLogId is required and must be a number',
+      });
     }
+
+    // Find the model
+    const model = await Model.findByPk(modelId);
+    if (!model) {
+      return res.status(404).json({
+        success: false,
+        message: `Model with id ${modelId} not found`,
+      });
+    }
+
+    // Find the modelLog
+    const modelLog = await ModelLog.findByPk(modelLogId);
+    if (!modelLog) {
+      return res.status(404).json({
+        success: false,
+        message: `ModelLog with id ${modelLogId} not found`,
+      });
+    }
+
+    // Verify the modelLog belongs to the specified model
+    if (modelLog.modelId !== parseInt(modelId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ModelLog does not belong to the specified model',
+      });
+    }
+
+    // Check if the modelLog has an error (is not correct)
+    if (isCorrect(modelLog)) {
+      return res.status(400).json({
+        success: false,
+        message: 'The specified modelLog does not contain an error',
+      });
+    }
+
+    // Get the model's company for optimization token
+    const modelGroup = await model.getModelGroup();
+    const company = await modelGroup.getCompany();
+
+    let optimizationToken;
+    let optimizationTokenData;
+    let optimizationProvider;
+    let optimizationModel;
+
+    if (model.flags?.isN8N) {
+      optimizationToken = process.env.TOGETHER_API_KEY;
+      optimizationModel = 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8';
+      optimizationProvider = 'TogetherAI';
+    } else {
+      const token = await company.getOptimizationToken();
+      optimizationToken = token.token;
+      optimizationTokenData = token.data;
+      optimizationModel = company.optimizationModel;
+      optimizationProvider = token.provider.name;
+
+      if (!optimizationModel) {
+        if (optimizationProvider === 'OpenAI') {
+          optimizationModel = 'gpt-4o-mini';
+        } else if (optimizationProvider === 'TogetherAI') {
+          optimizationModel =
+            'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8';
+        } else if (optimizationProvider === 'AWSBedrock') {
+          optimizationModel = 'anthropic.claude-3-5-sonnet-20240620-v1:0';
+        } else if (optimizationProvider === 'GoogleAI') {
+          optimizationModel = 'gemini-2.0-flash';
+        }
+      }
+    }
+
+    // Generate insights based on the specific modelLog error
+    await runReview(
+      modelLog,
+      null, // No specific reviewer, use default
+      ModelLog,
+      Insights,
+      model.problemType,
+      model.version,
+      model.id,
+      optimizationToken,
+      optimizationTokenData,
+      optimizationProvider,
+      optimizationModel
+    );
+
+    // Get the current prompt
+    const currentPrompt = await model.prompt();
+    if (!currentPrompt) {
+      return res.status(400).json({
+        success: false,
+        message: 'No current prompt found for the model',
+      });
+    }
+
+    // Get the newly generated insights
+    const insights = await Insights.findAll({
+      where: {
+        modelId: model.id,
+      },
+      order: [['createdAt', 'DESC']],
+      limit: 10, // Get the most recent insights
+    });
+
+    if (insights.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No insights were generated from the error',
+      });
+    }
+
+    // Apply the insights to create an optimized prompt
+    const optimizedPrompt = await enhancePrompt(
+      currentPrompt,
+      insights,
+      optimizationToken,
+      optimizationTokenData,
+      optimizationProvider,
+      optimizationModel
+    );
+    let promptVersion;
+    if (optimizedPrompt) {
+      const existingABTest = await db.ABTestModels.findOne({
+        where: {
+          modelId: model.id,
+          principal: true,
+        },
+      });
+
+      if (existingABTest) {
+        // Update the optimized model version
+        promptVersion = await model.updateOptimizedPrompt(optimizedPrompt);
+      } else {
+        // Create a new optimized model
+        const originalModel = model.toJSON();
+        // remove id from originalModel
+        delete originalModel.id;
+
+        const optimizedModel = await db.Model.create({
+          ...originalModel,
+          slug: `${model.slug}-optimized-${Date.now()}`,
+          isOptimized: true,
+          parameters: {
+            prompt: optimizedPrompt,
+            problemType: model.parameters?.problemType,
+          },
+          problemType: model.problemType,
+        });
+        promptVersion = await model.getModelVersion(model.version);
+
+        // Copy metrics and reviewers
+        const metrics = await model.getModelMetrics();
+        for (const metric of metrics) {
+          await db.ModelMetric.create({
+            ...metric.toJSON(),
+            id: undefined,
+            modelId: optimizedModel.id,
+          });
+        }
+
+        const reviewers = await model.getReviewers();
+        for (const reviewer of reviewers) {
+          await db.ReviewersModels.create({
+            modelId: optimizedModel.id,
+            model_id: model.id,
+            reviewer_id: reviewer.reviewerId,
+            reviewerId: reviewer.reviewerId,
+          });
+        }
+
+        // Create AB test
+        await db.ABTestModels.create({
+          modelId: model.id,
+          optimizedModelId: optimizedModel.id,
+          principal: true,
+          percentage: 30,
+        });
+
+        await model.updateOptimizedPrompt(optimizedPrompt);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        newPrompt: optimizedPrompt,
+        insights: insights.map((insight) => ({
+          id: insight.id,
+          problem: insight.problem,
+          solution: insight.solution,
+          description: insight.data?.description,
+          createdAt: insight.createdAt,
+        })),
+        promptVersion: '1',
+      },
+    });
+  } catch (error) {
+    console.error('Error in optimizePromptFromError:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 }
 
 /**
  * getAgentByIdFunction
- * Service to fetch a single Agent by ID, ensuring it belongs to the caller's company, 
+ * Service to fetch a single Agent by ID, ensuring it belongs to the caller's company,
  * and include its nodes and connections.
  * @param {object} req       - Express request, expects req.userObject.companyId
  * @param {string|number} id - The ID of the Agent to retrieve
  * @returns {Promise<Object|null>}
- *    Resolves with the Agent record (including AgentNode→Model and AgentConnection), 
+ *    Resolves with the Agent record (including AgentNode→Model and AgentConnection),
  *    or null if not found.
  *
  * Note: Sequelize parameterizes queries under the hood, providing SQL sanitization.
@@ -450,7 +690,6 @@ export const getAgentByIdFunction = async (req, res) => {
     const agent = await Agent.findOne({
       where: {
         id: req.params.agentId,
-        companyId,
       },
       include: [
         {
@@ -468,59 +707,82 @@ export const getAgentByIdFunction = async (req, res) => {
       ],
     });
 
+    if (!agent.tourAgent && agent.companyId !== companyId) {
+      console.log('agent not found');
+      return null;
+    }
+
     if (!agent) {
       throw new Error('Agent not found');
     }
 
-    
     // get prompt of each model
-    const models = agent.AgentNodes.map(node => node.Model);
-    const prompts = await Promise.all(models.map(async (model) => {
-      if (model) {
-        const prompt = await model.prompt();
-        return {
-          modelId: model.id,
-          prompt,
-        };
-      }
-    }));
+    const models = agent.AgentNodes.map((node) => node.Model);
+    const prompts = await Promise.all(
+      models.map(async (model) => {
+        if (model) {
+          const prompt = await model.prompt();
+          return {
+            modelId: model.id,
+            prompt,
+          };
+        }
+      })
+    );
 
-    const allVersionsPerModel = await Promise.all(models.map(async (model) => {
-      if (model) {
-        const versions = await promptService.getAllPromptVersions(model.id);
-        return {
-          modelId: model.id,
-          versions,
-        };
-      }
-    }));
+    const allVersionsPerModel = await Promise.all(
+      models.map(async (model) => {
+        if (model) {
+          const versions = await promptService.getAllPromptVersions(model.id);
+          return {
+            modelId: model.id,
+            versions,
+          };
+        }
+      })
+    );
 
-    const extraData = {}
+    const extraData = {};
 
     // Add ModelLog count and last ModelDeployHistory to each AgentNode's Model
-    await Promise.all(agent.AgentNodes.map(async (node) => {
-      if (node.dataValues.modelId) {
-        // Count ModelLogs for this model
-        const logCount = await db.ModelLog.count({ where: { modelId: node.dataValues.modelId, environment: 'production' } });
-        node.Model.modelLogCount = logCount;
-        // Get last ModelDeployHistory for this model
-        const lastDeploy = await db.ModelDeployHistory.findOne({
-          where: { modelId: node.modelId },
-          order: [['createdAt', 'DESC']],
-        });
-        extraData[node.dataValues.modelId] = {
-          modelLogCount: logCount,
-          lastDeployAt: lastDeploy ? lastDeploy.createdAt : null,
+    await Promise.all(
+      agent.AgentNodes.map(async (node) => {
+        if (node.dataValues.modelId) {
+          // Count ModelLogs for this model
+          const logCount = await db.ModelLog.count({
+            where: {
+              modelId: node.dataValues.modelId,
+              environment: 'production',
+            },
+          });
+          node.Model.modelLogCount = logCount;
+          // Get last ModelDeployHistory for this model
+          const lastDeploy = await db.ModelDeployHistory.findOne({
+            where: { modelId: node.modelId },
+            order: [['createdAt', 'DESC']],
+          });
+          extraData[node.dataValues.modelId] = {
+            modelLogCount: logCount,
+            lastDeployAt: lastDeploy ? lastDeploy.createdAt : null,
+          };
         }
-      }
-    }));
+      })
+    );
 
     const modelMetrics = await getModelMetrics(agent.id);
 
     agent.modelMetrics = modelMetrics;
     return res
       .status(200)
-      .json({ data: { ...agent.dataValues, modelMetrics, prompts, allVersionsPerModel, extraData } });
+      .json({
+        data: {
+          ...agent.dataValues,
+          modelMetrics,
+          prompts,
+          allVersionsPerModel,
+          extraData,
+        },
+      });
   } catch (error) {
     console.log(error);
     throw error;
@@ -546,14 +808,20 @@ export async function getModelOptimizationStatus(req, res) {
     for (const node of agentNodes) {
       const model = node.Model;
       if (!model) continue;
-      const abTest = await db.ABTestModels.findOne({ where: { modelId: model.id, deletedAt: null } });
+      const abTest = await db.ABTestModels.findOne({
+        where: { modelId: model.id, deletedAt: null },
+      });
       let targetModel = model;
       if (abTest && abTest.optimizedModelId) {
-        const optModel = await db.Model.findOne({ where: { id: abTest.optimizedModelId } });
+        const optModel = await db.Model.findOne({
+          where: { id: abTest.optimizedModelId },
+        });
         if (optModel) targetModel = optModel;
       }
       // Get last accuracy metric
-      const metric = await db.ModelMetric.findOne({ where: { modelId: targetModel.id, name: 'accuracy' } });
+      const metric = await db.ModelMetric.findOne({
+        where: { modelId: targetModel.id, name: 'accuracy' },
+      });
       let lastAccuracy = null;
       if (metric) {
         const lastLog = await db.ModelMetricLog.findOne({

@@ -65,6 +65,7 @@ import { useDispatch } from 'react-redux';
 import { parseInputContent } from '@/lib/parsers';
 import { FilterButton, FilterButtonDialog, FilterPopover, useFilterContext } from '@/components/core/filter-button';
 import { Option } from '@/components/core/option';
+import { useUser } from '@/hooks/use-user';
 
 import { TracingModal } from './tracing-modal';
 
@@ -120,16 +121,29 @@ function NodeFilterDialog({ agentDetails }) {
   const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
   const [selectedNode, setSelectedNode] = React.useState(initialValue);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const { user } = useUser();
 
   const { modelNodes, toolNodes } = React.useMemo(() => {
-    const filtered =
-      agentDetails?.AgentNodes?.filter((node) => node.name.toLowerCase().includes(searchQuery.toLowerCase())) || [];
+    let availableNodes = agentDetails?.AgentNodes || [];
+    
+    // Check if company has showTrackedNodesOnly enabled
+    const showTrackedNodesOnly = user?.company?.showTrackedNodesOnly || false;
+    
+    if (showTrackedNodesOnly) {
+      // Only show nodes that have execution steps - we need to get this from the current entry flow
+      // For now, we'll show all nodes in the filter dialog, but the actual filtering happens in the main component
+      // This could be enhanced to also filter in the dialog if we pass entryFlow data here
+    }
+    
+    const filtered = availableNodes.filter((node) => 
+      node.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     return {
       modelNodes: filtered.filter((node) => node.type === 'model'),
       toolNodes: filtered.filter((node) => node.type === 'tool'),
     };
-  }, [agentDetails?.AgentNodes, searchQuery]);
+  }, [agentDetails?.AgentNodes, searchQuery, user?.company?.showTrackedNodesOnly]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -287,6 +301,7 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
   const entryLog = params.get('entryLog');
   const dispatch = useDispatch();
   const [filteredNode, setFilteredNode] = React.useState(null);
+  const { user } = useUser();
   // Read nodeId and nodeType from URL
   const nodeId = params.get('nodeId');
   const nodeType = params.get('nodeType');
@@ -326,10 +341,19 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
   const [entryFlow, setEntryFlow] = React.useState(entryFlow1);
 
   // Add the new query hook
-  const { data: singleEntryData, isLoading: isLoadingSingleEntry } = useGetAgentEntryDetailQuery(
+  const { data: singleEntryData, isLoading: isLoadingSingleEntry, refetch: refetchSingleEntry } = useGetAgentEntryDetailQuery(
     { agentId, entryId: entryLog },
     { skip: !entryLog || !agentId }
   );
+
+  React.useEffect(() => {
+    if (entryLog && agentId) {
+      console.log('refetching single entry');
+      console.log(entryLog);
+      console.log(agentId);
+      refetchSingleEntry();
+    }
+  }, [entryLog, agentId]);
 
   React.useEffect(() => {
     setEntryFlow(entryFlow1);
@@ -340,7 +364,27 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
       return { nodes: [], edges: [] };
     }
 
-    const nodes = agentDetails.AgentNodes.map((node) => {
+    // Check if company has showTrackedNodesOnly enabled
+    const showTrackedNodesOnly = user?.company?.showTrackedNodesOnly || false;
+
+    // Filter nodes based on company setting
+    const availableNodes = showTrackedNodesOnly 
+      ? agentDetails.AgentNodes.filter((node) => {
+          // Only show nodes that have execution steps in the current entry flow
+          return entryFlow?.steps?.some((step) => 
+            (step.mappingnodeid ? step.mappingnodeid : step.nodeId) === node.id
+          );
+        })
+      : agentDetails.AgentNodes;
+
+    // Sort available nodes by their original position to maintain order
+    const sortedAvailableNodes = [...availableNodes].sort((a, b) => {
+      const aX = a.config?.position?.x || 0;
+      const bX = b.config?.position?.x || 0;
+      return aX - bX;
+    });
+
+    const nodes = sortedAvailableNodes.map((node, index) => {
       const steps = entryFlow?.steps?.filter((s) => (s.mappingnodeid ? s.mappingnodeid : s.nodeId) === node.id);
       const sequence = [];
 
@@ -395,10 +439,23 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
             label: conn || 'Output',
           }))
           : [{ id: 'output', label: 'Output' }];
+
+      // Calculate new position based on whether we're filtering nodes
+      let newPosition = node.config.position;
+      if (showTrackedNodesOnly) {
+        // Reposition nodes to be closer together
+        // Use a standard spacing of 300px between nodes
+        const nodeSpacing = 300;
+        newPosition = {
+          x: index * nodeSpacing,
+          y: node.config.position?.y || 0, // Keep original Y position
+        };
+      }
+
       return {
         id: node.id.toString(),
         type: 'custom',
-        position: node.config.position,
+        position: newPosition,
         data: {
           ...node,
           id: node.id,
@@ -419,16 +476,23 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
       };
     });
 
-    const edges = agentDetails.AgentConnections.map((conn) => ({
-      id: conn.id.toString(),
-      source: conn.from_node_id.toString(),
-      target: conn.to_node_id.toString(),
-      sourceHandle: conn.outputName || 'output',
-      targetHandle: conn.inputName || 'input',
-    }));
+    // Filter edges to only include connections between available nodes
+    const availableNodeIds = new Set(sortedAvailableNodes.map(node => node.id.toString()));
+    const edges = agentDetails.AgentConnections
+      .filter((conn) => 
+        availableNodeIds.has(conn.from_node_id.toString()) && 
+        availableNodeIds.has(conn.to_node_id.toString())
+      )
+      .map((conn) => ({
+        id: conn.id.toString(),
+        source: conn.from_node_id.toString(),
+        target: conn.to_node_id.toString(),
+        sourceHandle: conn.outputName || 'output',
+        targetHandle: conn.inputName || 'input',
+      }));
 
-    return { nodes, edges };
-  }, [agentDetails, entryFlow]);
+    return { nodes, edges     };
+  }, [agentDetails, entryFlow, user?.company?.showTrackedNodesOnly]);
 
   const tabs = [
     {
@@ -524,16 +588,23 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
 
   React.useEffect(() => {
     if (entryLog && filteredEntries.length > 0) {
-      setSelectedEntry(filteredEntries.find((entry) => entry.id == entryLog));
+      const entry = filteredEntries.find((entry) => entry.id == entryLog);
+      if (entry) {
+        setSelectedEntry(entry);
+      }
     }
   }, [entryLog, filteredEntries]);
 
   React.useEffect(() => {
+    console.log('singleEntryData', singleEntryData);
+    console.log('singleEntryData.entries[0].id', singleEntryData?.entries?.[0]?.id);
+    console.log('entryLog', entryLog);
     // If not and we have the single entry data, use that
     if (singleEntryData && singleEntryData.entries.length > 0 && singleEntryData.entries[0].id == entryLog) {
+      console.log('setting selected entry');
       setSelectedEntry(singleEntryData.entries[0]);
     }
-  }, [singleEntryData]);
+  }, [singleEntryData, entryLog]);
 
   // Helper function to calculate duration from steps
   const calculateDuration = (entry) => {
@@ -846,7 +917,7 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredEntries.map((entry) => {
+                  filteredEntries.map((entry, index) => {
                     const displayStatus = getDisplayStatus(entry.status);
                     const duration = calculateDuration(entry);
                     return (
@@ -860,6 +931,7 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
                           },
                         }}
                         onClick={() => handleEntrySelect(entry)}
+                        data-testid={index === 0 ? 'trace-row-first' : undefined}
                       >
                         <TableCell>
                           <Typography
@@ -921,7 +993,7 @@ export function TracingTable({ isLoading, agentId, agentDetails }) {
         entryFlow={entryFlow}
         nodes={nodes}
         edges={edges}
-        open={Boolean(selectedEntry)}
+        open={selectedEntry ? true : false}
         onClose={handleClose}
         isLoading={isEntryFlowLoading || isLoadingSingleEntry}
         onNodeUpdate={handleNodeUpdate}

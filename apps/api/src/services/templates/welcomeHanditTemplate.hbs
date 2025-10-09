@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to Handit.ai 🎉</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 60px 40px;
+        background: #ffffff url('cid:bg-image') no-repeat top center;
+        background-size: cover;
+        border-radius: 16px;
+        box-sizing: border-box;
+      }
+
+      .logo {
+        display: block;
+        margin-left: auto;
+        margin-bottom: 40px;
+        width: 180px;
+        height: auto;
+      }
+
+      .greeting {
+        font-size: 16px;
+        margin-bottom: 24px;
+        color: #00272f;
+      }
+
+      .main-text {
+        font-size: 15px;
+        margin-bottom: 20px;
+        color: #00272f;
+        line-height: 1.6;
+      }
+
+      .highlight-box {
+        background: rgba(2, 247, 170, 0.05);
+        border-left: 4px solid #02f7aa;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 24px 0;
+      }
+
+      .highlight-box p {
+        margin: 0;
+        font-size: 15px;
+        color: #00272f;
+        line-height: 1.6;
+      }
+
+      .cta-section {
+        text-align: center;
+        margin: 32px 0;
+        padding: 24px;
+        background: rgba(2, 247, 170, 0.05);
+        border-radius: 8px;
+        border: 2px solid #02f7aa;
+      }
+
+      .cta-button {
+        display: inline-block;
+        background: #02f7aa;
+        color: #00272f !important;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 16px;
+        padding: 14px 28px;
+        border-radius: 8px;
+        transition: background-color 0.2s;
+        margin-bottom: 12px;
+      }
+
+      .cta-button:hover {
+        background: #00d4aa;
+      }
+
+      .cta-text {
+        font-size: 14px;
+        color: #00272f;
+        margin-top: 8px;
+      }
+
+      .resource-section {
+        margin: 32px 0;
+      }
+
+      .resource-card {
+        background: rgba(2, 247, 170, 0.05);
+        border-left: 3px solid #02f7aa;
+        border-radius: 8px;
+        padding: 16px;
+        margin: 12px 0;
+        transition: all 0.2s ease;
+      }
+
+      .resource-card:hover {
+        background: rgba(2, 247, 170, 0.1);
+        transform: translateX(2px);
+      }
+
+      .resource-card a {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+      }
+
+      .resource-card h3 {
+        font-size: 14px;
+        color: #00272f;
+        margin: 0 0 4px 0;
+        font-weight: 600;
+      }
+
+      .resource-card p {
+        font-size: 13px;
+        margin: 0;
+        color: #00272f;
+        line-height: 1.4;
+      }
+
+      .signature {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(0, 39, 47, 0.2);
+        font-size: 15px;
+        color: #00272f;
+      }
+
+      .signature-name {
+        font-weight: 600;
+        color: #00272f;
+        margin-bottom: 4px;
+      }
+
+      .signature-title {
+        font-size: 14px;
+        color: #00272f;
+        margin-bottom: 4px;
+      }
+
+      .signature-company {
+        font-weight: 500;
+        color: #02f7aa;
+      }
+
+      @media screen and (max-width: 600px) {
+        .container {
+          padding: 40px 20px;
+        }
+        
+        .logo {
+          width: 100px;
+          margin-top: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <img class="logo" src="cid:logo-image" alt="Handit.ai" />
+      
+      <div class="greeting">
+        Hey {{first_name}},
+      </div>
+
+      <p class="main-text">
+        I'm Cristhian, CTO at Handit.ai.
+      </p>
+
+      <p class="main-text">
+        Welcome to Handit.ai! 🎉 I'm personally excited to have you on board. You're now part of a community of developers 
+        who are building AI systems that actually work reliably in production.
+      </p>
+
+      <div class="highlight-box">
+        <p><strong>What Handit.ai does:</strong> We're the open-source engine that catches broken AI behavior in real time, 
+        fixes it automatically, and learns from every failure—so you can ship AI you actually trust.</p>
+      </div>
+
+      <p class="main-text">
+        I'd love to personally hop on a quick call with you to show you around, help you get your first agent set up, 
+        and answer any questions you might have. Most teams get up and running in under 15 minutes.
+      </p>
+
+      <div class="cta-section">
+        <a href="https://calendly.com/cristhian-handit/30min" class="cta-button">
+          📅 Book a 15-min Setup Call with Me
+        </a>
+        <div class="cta-text">I'll personally walk you through everything and get you set up</div>
+      </div>
+
+      <p class="main-text">
+        Or if you prefer to dive in on your own, here are some quick resources to get you started:
+      </p>
+
+      <div class="resource-section">
+        <div class="resource-card">
+          <a href="https://dashboard.handit.ai">
+            <h3>🚀 Dashboard - Start Here</h3>
+            <p>Jump right in and create your first agent with our AI onboarding assistant</p>
+          </a>
+        </div>
+
+        <div class="resource-card">
+          <a href="https://docs.handit.ai">
+            <h3>📖 Quick Start Guide</h3>
+            <p>Step-by-step setup instructions and examples</p>
+          </a>
+        </div>
+
+        <div class="resource-card">
+          <a href="https://discord.com/invite/2WwD7PYfh2">
+            <h3>💬 Discord Community</h3>
+            <p>Join other developers and get help from the community</p>
+          </a>
+        </div>
+      </div>
+
+      <p class="main-text">
+        But honestly, the fastest way to get value from Handit.ai is to just grab 15 minutes with me. 
+        I can show you exactly how to set everything up for your specific use case.
+      </p>
+
+      <p class="main-text">
+        Looking forward to helping you build AI you can trust!
+      </p>
+
+      <div class="signature">
+        <div class="signature-name">— Cristhian</div>
+        <div class="signature-title">CTO & Co‑Founder</div>
+        <div class="signature-company">Handit.ai</div>
+      </div>
+    </div>
+  </body>
+</html> 

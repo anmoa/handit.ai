@@ -19,7 +19,13 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
  * @returns {string} - Rendered HTML.
  */
 const renderTemplate = (templateName, data) => {
-  const filePath = path.join(__dirname, 'src', 'services', 'templates', `${templateName}.hbs`);
+  const filePath = path.join(
+    __dirname,
+    'src',
+    'services',
+    'templates',
+    `${templateName}.hbs`
+  );
   const source = fs.readFileSync(filePath, 'utf8');
   const template = handlebars.compile(source);
   return template(data);
@@ -37,7 +43,17 @@ const renderTemplate = (templateName, data) => {
  * @param {number} [options.sourceId] - ID of the source (e.g., agent_node_id, model_log_id).
  * @returns {Promise<void>}
  */
-export const sendEmail = async ({ to, subject, text, html, attachments, Email, User, notificationSource, sourceId }) => {
+export const sendEmail = async ({
+  to,
+  subject,
+  text,
+  html,
+  attachments,
+  Email,
+  User,
+  notificationSource,
+  sourceId,
+}) => {
   // If this is a notification email, check rate limiting
   if (notificationSource && sourceId) {
     const today = new Date();
@@ -49,30 +65,30 @@ export const sendEmail = async ({ to, subject, text, html, attachments, Email, U
         notificationSource,
         sourceId,
         createdAt: {
-          [Op.gte]: today
-        }
-      }
+          [Op.gte]: today,
+        },
+      },
     });
 
     // If we've already sent 2 notifications from this source today, skip
-    if (todayNotifications >= 2) {
+    /*if (todayNotifications >= 2) {
       console.log(`Rate limit reached for notifications from source ${notificationSource} with ID ${sourceId}`);
       return;
-    }
+    }*/
   }
 
   const msg = {
     to,
     from: {
       email: process.env.EMAIL_FROM, // contact@handit.ai
-      name: "Handit.AI"
+      name: 'Handit.AI',
     },
     subject,
     text,
     html,
     attachments,
   };
-  
+
   try {
     await sgMail.send(msg);
 
@@ -87,7 +103,7 @@ export const sendEmail = async ({ to, subject, text, html, attachments, Email, U
       status: 'sent',
       sentAt: new Date(),
       notificationSource,
-      sourceId
+      sourceId,
     });
     console.log(`Email sent to ${to}`);
   } catch (error) {
@@ -104,7 +120,7 @@ export const sendEmail = async ({ to, subject, text, html, attachments, Email, U
       attachments: JSON.stringify(attachments),
       status: 'failed',
       notificationSource,
-      sourceId
+      sourceId,
     });
     throw error;
   }
@@ -121,10 +137,10 @@ export const sendEmail = async ({ to, subject, text, html, attachments, Email, U
  */
 export const sendBulkEmail = async ({ recipients, subject, text, html }) => {
   const msg = {
-    to: ['gfcristhian98@gmail.com'],
+    to: recipients,
     from: {
       email: process.env.EMAIL_FROM, // contact@handit.ai
-      name: "Handit.AI"
+      name: 'Handit.AI',
     },
     subject,
     text,
@@ -153,8 +169,19 @@ export const sendBulkEmail = async ({ recipients, subject, text, html }) => {
  * @param {Array} [options.attachments] - Array of attachment objects.
  * @returns {Promise<void>}
  */
-export const sendTemplatedEmail = async ({ to, subject, templateName, templateData, attachments, Email, User, notificationSource, sourceId }) => {
+export const sendTemplatedEmail = async ({
+  to,
+  subject,
+  templateName,
+  templateData,
+  attachments,
+  Email,
+  User,
+  notificationSource,
+  sourceId,
+}) => {
   const html = renderTemplate(templateName, templateData);
+  console.log(html);
 
   await sendEmail({
     to,
@@ -165,11 +192,16 @@ export const sendTemplatedEmail = async ({ to, subject, templateName, templateDa
     Email,
     User,
     notificationSource,
-    sourceId
+    sourceId,
   });
 };
 
-export const sendTemplatedBulkEmail = async ({ recipients, subject, templateName, templateData }) => {
+export const sendTemplatedBulkEmail = async ({
+  recipients,
+  subject,
+  templateName,
+  templateData,
+}) => {
   const html = renderTemplate(templateName, templateData);
 
   await sendBulkEmail({
@@ -178,7 +210,7 @@ export const sendTemplatedBulkEmail = async ({ recipients, subject, templateName
     text: 'This is a fallback text version of the email.',
     html,
   });
-}
+};
 
 /**
  * Sends a model evaluation failure email to a single recipient.
@@ -203,15 +235,32 @@ export const sendModelReviewFailureEmail = async ({
   outputPayload,
   reviewerSummary,
   agentId,
-  agentLogId,
+  modelLog,
   Email,
   User,
   notificationSource,
-  sourceId
+  sourceId,
 }) => {
+  const url = process.env.DASHBOARD_URL
+    ? process.env.DASHBOARD_URL
+    : 'http://localhost:3000';
   const subject = '🚨 Handit Alert: Automatic Evaluation Issue Detected';
-  const tracingUrl = `https://dashboard.handit.ai/ag-tracing?agentId=${agentId}&entryLog=${agentLogId}`;
-  
+  const agentLogId = modelLog.agentLogId || modelLog.dataValues?.agentLogId;
+  const tracingUrl = `${url}/ag-tracing?agentId=${agentId}&entryLog=${agentLogId}`;
+
+  // Get the modelId from the agentLog to create the optimize URL
+  let modelId = null;
+  let modelLogId = null;
+  if (modelLog) {
+    modelId = modelLog.modelId || modelLog.dataValues?.modelId;
+    modelLogId = modelLog.id || modelLog.dataValues?.id;
+  }
+
+  const optimizeUrl =
+    modelId && modelLogId
+      ? `${url}/prompt-versions?agentId=${agentId}&modelId=${modelId}&autoOptimize=true&modelLogId=${modelLogId}`
+      : null;
+
   const templateData = {
     recipient_name: recipientName,
     agent_name: agentName,
@@ -221,34 +270,44 @@ export const sendModelReviewFailureEmail = async ({
     output_payload: outputPayload,
     reviewer_summary: reviewerSummary,
     tracing_url: tracingUrl,
-    year: new Date().getFullYear()
+    optimize_url: optimizeUrl,
+    agent_id: agentId,
+    model_id: modelId,
+    model_log_id: modelLogId,
+    year: new Date().getFullYear(),
   };
 
   await sendTemplatedEmail({
-    to: 'gfcristhian98@gmail.com',
+    to: recipientEmail,
     subject,
     templateName: 'modelReviewFailureTemplate',
     templateData,
     Email,
     attachments: [
       {
-        content: fs.readFileSync(path.join(__dirname, 'src/services/templates/logo.png')).toString('base64'),
+        content: fs
+          .readFileSync(path.join(__dirname, 'src/services/templates/logo.png'))
+          .toString('base64'),
         filename: 'logo.png',
         type: 'image/png',
         disposition: 'inline',
-        content_id: 'logo-image'
+        content_id: 'logo-image',
       },
       {
-        content: fs.readFileSync(path.join(__dirname, 'src/services/templates/bg-real.png')).toString('base64'),
+        content: fs
+          .readFileSync(
+            path.join(__dirname, 'src/services/templates/bg-real.png')
+          )
+          .toString('base64'),
         filename: 'bg-handit.png',
         type: 'image/png',
         disposition: 'inline',
-        content_id: 'bg-image'
-      }
+        content_id: 'bg-image',
+      },
     ],
     User,
     notificationSource,
-    sourceId
+    sourceId,
   });
 };
 
@@ -275,17 +334,17 @@ export const sendModelReviewFailureEmailsToCompany = async ({
   outputPayload,
   reviewerSummary,
   agentId,
-  agentLogId,
+  modelLog,
   Email,
   User,
   notificationSource,
-  sourceId
+  sourceId,
 }) => {
   // Get all users from the company
   const users = await User.findAll({
     where: {
-      companyId: companyId
-    }
+      companyId: companyId,
+    },
   });
 
   // Send emails to each user
@@ -299,11 +358,11 @@ export const sendModelReviewFailureEmailsToCompany = async ({
       outputPayload,
       reviewerSummary,
       agentId,
-      agentLogId,
+      modelLog,
       Email,
       User,
       notificationSource,
-      sourceId
+      sourceId,
     });
   }
 };
@@ -313,24 +372,41 @@ export const sendModelReviewFailureEmailsToCompany = async ({
  * @param {Object} modelLog - The model log that was updated.
  * @returns {Promise<void>}
  */
-export const sendModelFailureNotification = async (modelLog, Model, AgentLog, Agent, AgentNode, Company, Email, User) => {
+export const sendModelFailureNotification = async (
+  modelLog,
+  Model,
+  AgentLog,
+  Agent,
+  AgentNode,
+  Company,
+  Email,
+  User
+) => {
   try {
     // Get the model
-    const model = await Model.findByPk(modelLog.modelId);
+    const model = await Model.findByPk(
+      modelLog.modelId ? modelLog.modelId : modelLog.dataValues?.modelId
+    );
     if (!model) {
       console.error(`Model not found for modelLog ID: ${modelLog.id}`);
       return;
     }
 
     // Get the agent log
-    const agentLog = await AgentLog.findByPk(modelLog.agentLogId);
+    const agentLog = await AgentLog.findByPk(
+      modelLog.agentLogId
+        ? modelLog.agentLogId
+        : modelLog.dataValues?.agentLogId
+    );
     if (!agentLog) {
       console.error(`Agent log not found for modelLog ID: ${modelLog.id}`);
       return;
     }
 
     // Get the agent
-    const agent = await Agent.findByPk(agentLog.agentId);
+    const agent = await Agent.findByPk(
+      agentLog.agentId ? agentLog.agentId : agentLog.dataValues?.agentId
+    );
     if (!agent) {
       console.error(`Agent not found for agentLog ID: ${agentLog.id}`);
       return;
@@ -339,28 +415,39 @@ export const sendModelFailureNotification = async (modelLog, Model, AgentLog, Ag
     // Get the agent node
     const agentNode = await AgentNode.findOne({
       where: {
-        agentId: agent.id,
-        modelId: model.id
-      }
+        agentId: agent.id ? agent.id : agent.dataValues?.id,
+        modelId: model.id ? model.id : model.dataValues?.id,
+      },
     });
     if (!agentNode) {
-      console.error(`Agent node not found for agent ID: ${agent.id} and model ID: ${model.id}`);
+      console.error(
+        `Agent node not found for agent ID: ${agent.id} and model ID: ${model.id}`
+      );
       return;
     }
 
     // Get the company
-    const company = await Company.findByPk(agent.companyId);
+    const company = await Company.findByPk(
+      agent.companyId ? agent.companyId : agent.dataValues?.companyId
+    );
     if (!company) {
       console.error(`Company not found for agent ID: ${agent.id}`);
       return;
     }
 
     // Prepare the reviewer summary
-    let reviewerSummary = "The model evaluation failed.";
-    if (modelLog.actual && modelLog.actual.summary) {
-      reviewerSummary = modelLog.actual.summary;
-    } else if (modelLog.actual && modelLog.actual.reviewerSummary) {
-      reviewerSummary = modelLog.actual.reviewerSummary;
+
+    let reviewerSummary = [];
+
+    const evaluations = modelLog.actual?.evaluations;
+    if (evaluations && evaluations.length > 0) {
+      for (const evaluation of evaluations) {
+        if (evaluation.evaluator && !evaluation.isInformative) {
+          reviewerSummary.push(
+            ' • ' + evaluation.evaluator + ': ' + evaluation.analysis
+          );
+        }
+      }
     }
 
     // Send the email to all users of the company
@@ -372,16 +459,21 @@ export const sendModelFailureNotification = async (modelLog, Model, AgentLog, Ag
       outputPayload: JSON.stringify(modelLog.output),
       reviewerSummary,
       agentId: agent.id,
-      agentLogId: agentLog.id,
+      modelLog: modelLog,
       Email,
       User,
       notificationSource: 'model_log',
-      sourceId: modelLog.id
+      sourceId: modelLog.id,
     });
 
-    console.log(`Model failure notification sent for modelLog ID: ${modelLog.id}`);
+    console.log(
+      `Model failure notification sent for modelLog ID: ${modelLog.id}`
+    );
   } catch (error) {
-    console.error(`Error sending model failure notification for modelLog ID: ${modelLog.id}:`, error);
+    console.error(
+      `Error sending model failure notification for modelLog ID: ${modelLog.id}:`,
+      error
+    );
   }
 };
 
@@ -390,7 +482,14 @@ export const sendModelFailureNotification = async (modelLog, Model, AgentLog, Ag
  * @param {Object} agentNodeLog - The agent node log that contains the error.
  * @returns {Promise<void>}
  */
-export const sendToolErrorNotification = async (agentNodeLog, Agent, AgentNode, Company, Email, User) => {
+export const sendToolErrorNotification = async (
+  agentNodeLog,
+  Agent,
+  AgentNode,
+  Company,
+  Email,
+  User
+) => {
   try {
     // Get the agent and agent node
     const agent = await Agent.findByPk(agentNodeLog.agentId);
@@ -398,13 +497,15 @@ export const sendToolErrorNotification = async (agentNodeLog, Agent, AgentNode, 
     const company = await Company.findByPk(agent.companyId);
 
     if (!agent || !agentNode || !company) {
-      console.error('Could not find agent, agent node, or company for tool error notification');
+      console.error(
+        'Could not find agent, agent node, or company for tool error notification'
+      );
       return;
     }
 
     // Get all users in the company
     const users = await User.findAll({
-      where: { companyId: company.id }
+      where: { companyId: company.id },
     });
 
     // Construct the tracing URL
@@ -417,7 +518,7 @@ export const sendToolErrorNotification = async (agentNodeLog, Agent, AgentNode, 
     // Send email to each user
     for (const user of users) {
       await sendTemplatedEmail({
-        to: 'gfcristhian98@gmail.com',
+        to: user.email,
         subject: `[Handit.AI] Tool Error Alert - ${agent.name}`,
         templateName: 'toolErrorTemplate',
         templateData: {
@@ -429,12 +530,12 @@ export const sendToolErrorNotification = async (agentNodeLog, Agent, AgentNode, 
           error_message: errorMessage,
           error_stack: errorStack,
           tracing_url: tracingUrl,
-          year: new Date().getFullYear()
+          year: new Date().getFullYear(),
         },
         Email,
         User,
         notificationSource: 'agent_node',
-        sourceId: agentNodeLog.id
+        sourceId: agentNodeLog.id,
       });
     }
   } catch (error) {
@@ -453,18 +554,20 @@ export const sendWeeklyPerformanceEmail = async ({
   clientName,
   tracingUrl,
   notificationSource = 'weekly_performance',
-  sourceId = null
+  sourceId = null,
 }) => {
   try {
     // Get company users who should receive the email
     const users = await User.findAll({
       where: {
         companyId: companyId,
-      }
+      },
     });
 
     if (users.length === 0) {
-      console.log(`No users found with active messages for company ${companyId} to receive weekly performance email`);
+      console.log(
+        `No users found with active messages for company ${companyId} to receive weekly performance email`
+      );
       return;
     }
 
@@ -472,12 +575,12 @@ export const sendWeeklyPerformanceEmail = async ({
     const formattedStartDate = new Date(startDate).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
     const formattedEndDate = new Date(endDate).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
 
     // Prepare template data
@@ -491,35 +594,48 @@ export const sendWeeklyPerformanceEmail = async ({
 
     // Send email to each user
     await sendTemplatedEmail({
-      to: users.map(user => user.email),
+      to: users.map((user) => user.email),
       subject: `Handit.AI Weekly Performance Report (${formattedStartDate} - ${formattedEndDate})`,
       templateName: 'weeklyPerformanceTemplate',
       templateData,
       attachments: [
         {
-          content: fs.readFileSync(path.join(__dirname, 'src/services/templates/logo.png')).toString('base64'),
+          content: fs
+            .readFileSync(
+              path.join(__dirname, 'src/services/templates/logo.png')
+            )
+            .toString('base64'),
           filename: 'logo.png',
           type: 'image/png',
           disposition: 'inline',
-          content_id: 'logo-image'
+          content_id: 'logo-image',
         },
         {
-          content: fs.readFileSync(path.join(__dirname, 'src/services/templates/bg-real.png')).toString('base64'),
+          content: fs
+            .readFileSync(
+              path.join(__dirname, 'src/services/templates/bg-real.png')
+            )
+            .toString('base64'),
           filename: 'bg-handit.png',
           type: 'image/png',
           disposition: 'inline',
-          content_id: 'bg-image'
-        }
+          content_id: 'bg-image',
+        },
       ],
       Email,
       User,
       notificationSource,
-      sourceId
+      sourceId,
     });
-  
-    console.log(`Weekly performance email sent to ${users.length} users for company ${companyId}`);
+
+    console.log(
+      `Weekly performance email sent to ${users.length} users for company ${companyId}`
+    );
   } catch (error) {
-    console.error(`Error sending weekly performance email for company ${companyId}:`, error);
+    console.error(
+      `Error sending weekly performance email for company ${companyId}:`,
+      error
+    );
   }
 };
 
@@ -529,13 +645,13 @@ export const sendAutonomWaitlistEmail = async ({
   Email,
   User,
   notificationSource = 'autonom_waitlist',
-  sourceId = null
+  sourceId = null,
 }) => {
   const subject = '🚀 Welcome to the Autonom Waitlist!';
-  
+
   const templateData = {
     first_name: firstName,
-    year: new Date().getFullYear()
+    year: new Date().getFullYear(),
   };
 
   await sendTemplatedEmail({
@@ -545,24 +661,30 @@ export const sendAutonomWaitlistEmail = async ({
     templateData,
     attachments: [
       {
-        content: fs.readFileSync(path.join(__dirname, 'src/services/templates/logo.png')).toString('base64'),
+        content: fs
+          .readFileSync(path.join(__dirname, 'src/services/templates/logo.png'))
+          .toString('base64'),
         filename: 'logo.png',
         type: 'image/png',
         disposition: 'inline',
-        content_id: 'logo-image'
+        content_id: 'logo-image',
       },
       {
-        content: fs.readFileSync(path.join(__dirname, 'src/services/templates/bg-real.png')).toString('base64'),
+        content: fs
+          .readFileSync(
+            path.join(__dirname, 'src/services/templates/bg-real.png')
+          )
+          .toString('base64'),
         filename: 'bg-handit.png',
         type: 'image/png',
         disposition: 'inline',
-        content_id: 'bg-image'
-      }
+        content_id: 'bg-image',
+      },
     ],
     Email,
     User,
     notificationSource,
-    sourceId
+    sourceId,
   });
 };
 
@@ -573,15 +695,15 @@ export const sendWelcomeNewUserEmail = async ({
   Email,
   User,
   notificationSource = 'welcome_new_user',
-  sourceId = null
+  sourceId = null,
 }) => {
   const subject = '🎉 Welcome to Handit.ai!';
-  
+
   const templateData = {
     first_name: firstName,
     email: recipientEmail,
     password: password,
-    year: new Date().getFullYear()
+    year: new Date().getFullYear(),
   };
 
   await sendTemplatedEmail({
@@ -591,23 +713,580 @@ export const sendWelcomeNewUserEmail = async ({
     templateData,
     attachments: [
       {
-        content: fs.readFileSync(path.join(__dirname, 'src/services/templates/logo.png')).toString('base64'),
+        content: fs
+          .readFileSync(path.join(__dirname, 'src/services/templates/logo.png'))
+          .toString('base64'),
         filename: 'logo.png',
         type: 'image/png',
         disposition: 'inline',
-        content_id: 'logo-image'
+        content_id: 'logo-image',
       },
       {
-        content: fs.readFileSync(path.join(__dirname, 'src/services/templates/bg-real.png')).toString('base64'),
+        content: fs
+          .readFileSync(
+            path.join(__dirname, 'src/services/templates/bg-real.png')
+          )
+          .toString('base64'),
         filename: 'bg-handit.png',
         type: 'image/png',
         disposition: 'inline',
-        content_id: 'bg-image'
-      }
+        content_id: 'bg-image',
+      },
     ],
     Email,
     User,
     notificationSource,
-    sourceId
+    sourceId,
   });
+};
+
+export const sendWelcomeHanditEmail = async ({
+  recipientEmail,
+  firstName,
+  Email,
+  User,
+  notificationSource = 'welcome_handit',
+  sourceId = null,
+}) => {
+  const subject =
+    'Welcome to handit.ai - The Open-Source Engine that Auto-Fixes Your AI';
+
+  const templateData = {
+    first_name: firstName,
+    email: recipientEmail,
+    year: new Date().getFullYear(),
+  };
+
+  await sendTemplatedEmail({
+    to: recipientEmail,
+    subject,
+    templateName: 'welcomeHanditTemplate',
+    templateData,
+    attachments: [
+      {
+        content: fs
+          .readFileSync(path.join(__dirname, 'src/services/templates/logo.png'))
+          .toString('base64'),
+        filename: 'logo.png',
+        type: 'image/png',
+        disposition: 'inline',
+        content_id: 'logo-image',
+      },
+      {
+        content: fs
+          .readFileSync(
+            path.join(__dirname, 'src/services/templates/bg-real.png')
+          )
+          .toString('base64'),
+        filename: 'bg-handit.png',
+        type: 'image/png',
+        disposition: 'inline',
+        content_id: 'bg-image',
+      },
+    ],
+    Email,
+    User,
+    notificationSource,
+    sourceId,
+  });
+};
+
+/**
+ * Sends a re-engagement email to inactive users who haven't set up AI observability.
+ * @param {Object} options - Email options.
+ * @param {string} options.recipientEmail - Email address of the recipient.
+ * @param {string} options.firstName - First name of the recipient.
+ * @param {number} options.daysSinceRegistration - Number of days since user registration.
+ * @param {string} [options.quickstartUrl] - URL to the quickstart guide.
+ * @param {Object} options.Email - Email model for database operations.
+ * @param {Object} options.User - User model for database operations.
+ * @param {string} [options.notificationSource] - Source of the notification.
+ * @param {number} [options.sourceId] - ID of the source.
+ * @returns {Promise<void>}
+ */
+export const sendReEngagementEmail = async ({
+  recipientEmail,
+  firstName,
+  daysSinceRegistration,
+  quickstartUrl = 'https://docs.handit.ai/quickstart',
+  Email,
+  User,
+  notificationSource = 're_engagement',
+  sourceId = null,
+}) => {
+  const subject = 'Complete Your Handit.AI Setup in 5 Minutes ⏱️';
+
+  const templateData = {
+    firstName: firstName,
+    daysSinceRegistration: daysSinceRegistration,
+    quickstartUrl: quickstartUrl,
+    year: new Date().getFullYear(),
+  };
+
+  await sendTemplatedEmail({
+    to: recipientEmail,
+    subject,
+    templateName: 'reEngagement/inactiveUserTemplate',
+    templateData,
+    attachments: [
+      {
+        content: fs
+          .readFileSync(path.join(__dirname, 'src/services/templates/logo.png'))
+          .toString('base64'),
+        filename: 'logo.png',
+        type: 'image/png',
+        disposition: 'inline',
+        content_id: 'logo',
+      },
+      {
+        content: fs
+          .readFileSync(
+            path.join(__dirname, 'src/services/templates/bg-real.png')
+          )
+          .toString('base64'),
+        filename: 'bg-real.png',
+        type: 'image/png',
+        disposition: 'inline',
+        content_id: 'bg-real',
+      },
+    ],
+    Email,
+    User,
+    notificationSource,
+    sourceId,
+  });
+};
+
+/**
+ * Sends bulk re-engagement emails to multiple inactive users.
+ * @param {Object} options - Bulk email options.
+ * @param {Array} options.inactiveUsers - Array of inactive user objects with email, firstName, and daysSinceRegistration.
+ * @param {string} [options.quickstartUrl] - URL to the quickstart guide.
+ * @param {Object} options.Email - Email model for database operations.
+ * @param {Object} options.User - User model for database operations.
+ * @param {string} [options.notificationSource] - Source of the notification.
+ * @returns {Promise<void>}
+ */
+export const sendBulkReEngagementEmails = async ({
+  inactiveUsers,
+  quickstartUrl = 'https://dashboard.handit.ai',
+  Email,
+  User,
+  notificationSource = 're_engagement_bulk',
+}) => {
+  console.log(
+    `Starting bulk re-engagement email campaign for ${inactiveUsers.length} users`
+  );
+
+  const results = {
+    sent: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  for (const user of inactiveUsers) {
+    try {
+      await sendReEngagementEmail({
+        recipientEmail: user.email,
+        firstName: user.firstName,
+        daysSinceRegistration: user.daysSinceRegistration,
+        quickstartUrl,
+        Email,
+        User,
+        notificationSource,
+        sourceId: user.id,
+      });
+
+      results.sent++;
+      console.log(`✅ Re-engagement email sent to ${user.email}`);
+
+      // Small delay between emails to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (error) {
+      results.failed++;
+      results.errors.push({
+        email: user.email,
+        error: error.message,
+      });
+      console.error(
+        `❌ Failed to send re-engagement email to ${user.email}:`,
+        error.message
+      );
+    }
+  }
+
+  console.log(
+    `🎯 Bulk re-engagement campaign completed: ${results.sent} sent, ${results.failed} failed`
+  );
+  return results;
+};
+
+/**
+ * Sends an email to users with agents that don't have evaluators connected.
+ * @param {Object} options - Email options.
+ * @param {string} options.recipientEmail - Email address of the recipient.
+ * @param {string} options.firstName - First name of the recipient.
+ * @param {number} options.daysSinceAgentCreation - Number of days since agent creation.
+ * @param {string} [options.evaluationHubUrl] - URL to the evaluation hub.
+ * @param {Object} options.Email - Email model for database operations.
+ * @param {Object} options.User - User model for database operations.
+ * @param {string} [options.notificationSource] - Source of the notification.
+ * @param {number} [options.sourceId] - ID of the source.
+ * @returns {Promise<void>}
+ */
+export const sendAgentsWithoutEvaluatorsEmail = async ({
+  recipientEmail,
+  firstName,
+  daysSinceAgentCreation,
+  evaluationHubUrl = 'https://dashboard.handit.ai/evaluation-hub',
+  Email,
+  User,
+  notificationSource = 'agents_without_evaluators',
+  sourceId = null,
+}) => {
+  const subject = 'Connect Evaluators to Your AI - Complete Your Setup 🎯';
+
+  const templateData = {
+    firstName: firstName,
+    daysSinceAgentCreation: daysSinceAgentCreation,
+    evaluationHubUrl: evaluationHubUrl,
+    year: new Date().getFullYear(),
+  };
+
+  await sendTemplatedEmail({
+    to: recipientEmail,
+    subject,
+    templateName: 'reEngagement/agentsWithoutEvaluatorsTemplate',
+    templateData,
+    attachments: [
+      {
+        content: fs
+          .readFileSync(path.join(__dirname, 'src/services/templates/logo.png'))
+          .toString('base64'),
+        filename: 'logo.png',
+        type: 'image/png',
+        disposition: 'inline',
+        content_id: 'logo',
+      },
+      {
+        content: fs
+          .readFileSync(
+            path.join(__dirname, 'src/services/templates/bg-real.png')
+          )
+          .toString('base64'),
+        filename: 'bg-real.png',
+        type: 'image/png',
+        disposition: 'inline',
+        content_id: 'bg-real',
+      },
+    ],
+    Email,
+    User,
+    notificationSource,
+    sourceId,
+  });
+};
+
+/**
+ * Sends bulk emails to users with agents that don't have evaluators connected.
+ * @param {Object} options - Bulk email options.
+ * @param {Array} options.agentsWithoutEvaluators - Array of user objects with email, firstName, and daysSinceAgentCreation.
+ * @param {string} [options.evaluationHubUrl] - URL to the evaluation hub.
+ * @param {Object} options.Email - Email model for database operations.
+ * @param {Object} options.User - User model for database operations.
+ * @param {string} [options.notificationSource] - Source of the notification.
+ * @returns {Promise<void>}
+ */
+export const sendBulkAgentsWithoutEvaluatorsEmails = async ({
+  agentsWithoutEvaluators,
+  evaluationHubUrl = 'https://dashboard.handit.ai/evaluation-hub',
+  Email,
+  User,
+  notificationSource = 'agents_without_evaluators_bulk',
+}) => {
+  console.log(
+    `Starting bulk agents without evaluators email campaign for ${agentsWithoutEvaluators.length} users`
+  );
+
+  const results = {
+    sent: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  for (const user of agentsWithoutEvaluators) {
+    try {
+      await sendAgentsWithoutEvaluatorsEmail({
+        recipientEmail: user.email,
+        firstName: user.firstName,
+        daysSinceAgentCreation: user.daysSinceAgentCreation,
+        evaluationHubUrl,
+        Email,
+        User,
+        notificationSource,
+        sourceId: user.id,
+      });
+
+      results.sent++;
+      console.log(`✅ Agents without evaluators email sent to ${user.email}`);
+
+      // Small delay between emails to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (error) {
+      results.failed++;
+      results.errors.push({
+        email: user.email,
+        error: error.message,
+      });
+      console.error(
+        `❌ Failed to send agents without evaluators email to ${user.email}:`,
+        error.message
+      );
+    }
+  }
+
+  console.log(
+    `🎯 Bulk agents without evaluators campaign completed: ${results.sent} sent, ${results.failed} failed`
+  );
+  return results;
+};
+
+/**
+ * Sends an email when Handit automatically creates an improved prompt version.
+ * @param {Object} options - Email options.
+ * @param {string} options.recipientEmail - Email address of the recipient.
+ * @param {string} options.firstName - First name of the recipient.
+ * @param {string} options.agentName - Name of the agent.
+ * @param {string} options.modelName - Name of the model.
+ * @param {string} options.promptVersion - Version of the prompt.
+ * @param {number} options.agentId - ID of the agent.
+ * @param {number} options.modelId - ID of the model.
+ * @param {string} [options.promptVersionsUrl] - URL to the prompt versions page.
+ * @param {Object} options.Email - Email model for database operations.
+ * @param {Object} options.User - User model for database operations.
+ * @param {Object} options.GitHubIntegration - GitHubIntegration model for database operations.
+ * @param {string} [options.notificationSource] - Source of the notification.
+ * @param {number} [options.sourceId] - ID of the source.
+ * @param {string} [options.prUrl] - URL to the created PR (if GitHub integration exists).
+ * @param {number} [options.prNumber] - PR number (if GitHub integration exists).
+ * @returns {Promise<void>}
+ */
+export const sendPromptVersionCreatedEmail = async ({
+  recipientEmail,
+  firstName,
+  agentName,
+  modelName,
+  promptVersion,
+  agentId,
+  modelId,
+  promptVersionsUrl = 'http://dashboard.handit.ai/prompt-versions',
+  Email,
+  User,
+  GitHubIntegration,
+  notificationSource = 'prompt_version_created',
+  sourceId = null,
+  prUrl = null,
+  prNumber = null,
+}) => {
+  const subject = 'Handit Found an Improved Version of Your Prompt 🚀';
+
+  // Get user to check for GitHub integration
+  const user = await User.findOne({ where: { email: recipientEmail } });
+  let hasGitHubIntegration = false;
+  let githubConnectUrl = null;
+
+  if (user) {
+    // Check if user's company has GitHub integration
+    const githubIntegration = await GitHubIntegration.findOne({
+      where: { companyId: user.companyId }
+    });
+    
+    hasGitHubIntegration = !!githubIntegration;
+    
+    if (!hasGitHubIntegration) {
+      // Generate GitHub connection URL for the company
+      githubConnectUrl = `https://github.com/apps/handit-ai/installations/new?state=${user.companyId}`;
+    }
+  }
+
+  const templateData = {
+    firstName: firstName,
+    agentName: agentName,
+    modelName: modelName,
+    promptVersion: promptVersion,
+    agentId: agentId,
+    modelId: modelId,
+    promptVersionsUrl: `${promptVersionsUrl}?agentId=${agentId}&modelId=${modelId}&promptVersion=${promptVersion}&autoDeploy=true`,
+    hasGitHubIntegration: hasGitHubIntegration,
+    prUrl: prUrl,
+    prNumber: prNumber,
+    githubConnectUrl: githubConnectUrl,
+    year: new Date().getFullYear(),
+  };
+
+  await sendTemplatedEmail({
+    to: recipientEmail,
+    subject,
+    templateName: 'reEngagement/promptVersionCreatedTemplate',
+    templateData,
+    attachments: [
+      {
+        content: fs
+          .readFileSync(path.join(__dirname, 'src/services/templates/logo.png'))
+          .toString('base64'),
+        filename: 'logo.png',
+        type: 'image/png',
+        disposition: 'inline',
+        content_id: 'logo',
+      },
+      {
+        content: fs
+          .readFileSync(
+            path.join(__dirname, 'src/services/templates/bg-real.png')
+          )
+          .toString('base64'),
+        filename: 'bg-real.png',
+        type: 'image/png',
+        disposition: 'inline',
+        content_id: 'bg-real',
+      },
+    ],
+    Email,
+    User,
+    notificationSource,
+    sourceId,
+  });
+};
+
+/**
+ * Sends bulk emails when Handit automatically creates improved prompt versions.
+ * @param {Object} options - Bulk email options.
+ * @param {Array} options.promptVersionNotifications - Array of notification objects with email, firstName, agentName, modelName, promptVersion, agentId, modelId.
+ * @param {string} [options.promptVersionsUrl] - URL to the prompt versions page.
+ * @param {Object} options.Email - Email model for database operations.
+ * @param {Object} options.User - User model for database operations.
+ * @param {Object} options.GitHubIntegration - GitHubIntegration model for database operations.
+ * @param {string} [options.notificationSource] - Source of the notification.
+ * @returns {Promise<void>}
+ */
+export const sendBulkPromptVersionCreatedEmails = async ({
+  promptVersionNotifications,
+  promptVersionsUrl = 'https://dashboard.handit.ai/prompt-versions',
+  Email,
+  User,
+  GitHubIntegration,
+  notificationSource = 'prompt_version_created_bulk',
+}) => {
+  console.log(
+    `Starting bulk prompt version created email campaign for ${promptVersionNotifications.length} users`
+  );
+
+  const results = {
+    sent: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  for (const notification of promptVersionNotifications) {
+    try {
+      await sendPromptVersionCreatedEmail({
+        recipientEmail: notification.email,
+        firstName: notification.firstName,
+        agentName: notification.agentName,
+        modelName: notification.modelName,
+        promptVersion: notification.promptVersion,
+        agentId: notification.agentId,
+        modelId: notification.modelId,
+        promptVersionsUrl,
+        Email,
+        User,
+        GitHubIntegration,
+        notificationSource,
+        sourceId: notification.id,
+        prUrl: notification.prUrl,
+        prNumber: notification.prNumber,
+      });
+
+      results.sent++;
+      console.log(
+        `✅ Prompt version created email sent to ${notification.email}`
+      );
+
+      // Small delay between emails to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (error) {
+      results.failed++;
+      results.errors.push({
+        email: notification.email,
+        error: error.message,
+      });
+      console.error(
+        `❌ Failed to send prompt version created email to ${notification.email}:`,
+        error.message
+      );
+    }
+  }
+
+  console.log(
+    `🎯 Bulk prompt version created campaign completed: ${results.sent} sent, ${results.failed} failed`
+  );
+  return results;
+};
+
+/**
+ * Test endpoint to send model failure alert for a given modelLog ID
+ * @param {number} modelLogId - ID of the model log entry
+ * @param {Object} sequelize - Sequelize instance with models
+ * @returns {Promise<Object>} Result of the operation
+ */
+export const sendTestModelFailureAlert = async (modelLogId, sequelize) => {
+  try {
+    console.log(`🚨 Sending test model failure alert for modelLog ID: ${modelLogId}`);
+    
+    // Get the modelLog entry
+    const modelLog = await sequelize.ModelLog.findByPk(modelLogId);
+    if (!modelLog) {
+      throw new Error(`ModelLog with ID ${modelLogId} not found`);
+    }
+    
+    console.log(`📋 Found modelLog:`, {
+      id: modelLog.id,
+      modelId: modelLog.modelId,
+      agentLogId: modelLog.agentLogId,
+      status: modelLog.status,
+      createdAt: modelLog.createdAt
+    });
+    
+    // Send the model failure notification
+    await sendModelFailureNotification(
+      modelLog,
+      sequelize.Model,
+      sequelize.AgentLog,
+      sequelize.Agent,
+      sequelize.AgentNode,
+      sequelize.Company,
+      sequelize.Email,
+      sequelize.User
+    );
+    
+    console.log(`✅ Test model failure alert sent successfully for modelLog ID: ${modelLogId}`);
+    
+    return {
+      success: true,
+      message: `Model failure alert sent successfully for modelLog ID: ${modelLogId}`,
+      modelLogId: modelLogId,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error(`❌ Error sending test model failure alert for modelLog ID ${modelLogId}:`, error);
+    
+    return {
+      success: false,
+      message: `Failed to send model failure alert: ${error.message}`,
+      modelLogId: modelLogId,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
 };

@@ -29,8 +29,8 @@ export const parseContext = (data, model = null) => {
   const systemMessages = [];
   
   const extractSystemContent = (item) => {
-    if (item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage) {
-      systemMessages.push(item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage);
+    if (item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage || item?.input?.options?.systemPromptTemplate || item?.options?.systemPromptTemplate) {
+      systemMessages.push(item?.input?.options?.systemMessage || item?.systemMessage || item?.options?.systemMessage || item?.input?.options?.systemPromptTemplate || item?.options?.systemPromptTemplate);
       return;
     }
     if (!item) return;
@@ -40,6 +40,15 @@ export const parseContext = (data, model = null) => {
     } else if (typeof item === 'object') {
       if (item?.input?.options?.systemMessage) {
         systemMessages.push(item.input.options.systemMessage);
+      }
+      if (item?.input?.options?.systemPromptTemplate) {
+        systemMessages.push(item.input.options.systemPromptTemplate);
+      }
+      if (item?.options?.systemMessage) {
+        systemMessages.push(item.options.systemMessage);
+      }
+      if (item?.options?.systemPromptTemplate) {
+        systemMessages.push(item.options.systemPromptTemplate);
       }
       if (item.role === 'system' && item.content) {
         systemMessages.push(item.content);
@@ -73,29 +82,42 @@ const extractSystemPromptUsingStructure = (data, structure) => {
   if (!data || !structure) return null;
 
   try {
+    let prompt = null;
+    
     switch (structure.type) {
       case 'array':
         if (Array.isArray(data) && structure.arrayIndex !== undefined) {
           const item = data[structure.arrayIndex];
           if (item && typeof item === 'object' && item[structure.field]) {
-            return item[structure.field];
+            prompt = item[structure.field];
           }
         }
         break;
       
       case 'nested':
-        const value = getNestedValue(data, structure.path);
+        const value = getNestedValue(data, structure.path.replace('input.', ''));
         if (value && typeof value === 'string') {
-          return value;
+          prompt = value;
         }
         break;
       
       case 'direct':
-        if (data && typeof data === 'object' && data[structure.field]) {
-          return data[structure.field];
+        const field = structure.path.replace('input.', '');
+        if (field && field.length > 0) {
+          prompt = getNestedValue(data, field);
         }
         break;
     }
+    
+    // If we found a prompt and there's a staticPromptEndPosition, extract only the static part
+    if (prompt && typeof prompt === 'string' && structure.staticPromptEndPosition) {
+      const staticEndPosition = structure.staticPromptEndPosition;
+      if (staticEndPosition > 0 && staticEndPosition < prompt.length) {
+        prompt = prompt.substring(0, staticEndPosition);
+      }
+    }
+    
+    return prompt;
   } catch (error) {
     console.error('Error extracting system prompt using structure:', error);
   }
@@ -240,16 +262,36 @@ export const parseInputContent = (data, model = null) => {
       
       // Prioritize content field
       if (item.content && typeof item.content === 'string' && !isBase64(item.content)) {
-        contents.push(item.content);
+        let content = item.content;
+        
+        // If this is a user prompt and we have static prompt structure, extract only static part
+        if (model?.systemPromptStructure?.structure && model.systemPromptStructure.promptType === 'user') {
+          const structure = model.systemPromptStructure.structure;
+          if (structure.staticPromptEndPosition && structure.staticPromptEndPosition > 0 && structure.staticPromptEndPosition < content.length) {
+            content = content.substring(0, structure.staticPromptEndPosition);
+          }
+        }
+        
+        contents.push(content);
         match = true;
         return;
       }
 
       // Check for common input fields
-      const inputFields = ['input', 'query', 'prompt', 'text', 'message'];
+      const inputFields = ['input', 'query', 'prompt', 'text', 'message', 'user_prompt'];
       for (const field of inputFields) {
         if (item[field] && typeof item[field] === 'string' && !isBase64(item[field])) {
-          contents.push(item[field]);
+          let fieldContent = item[field];
+          
+          // If this is a user prompt and we have static prompt structure, extract only static part
+          if (model?.systemPromptStructure?.structure && model.systemPromptStructure.promptType === 'user') {
+            const structure = model.systemPromptStructure.structure;
+            if (structure.staticPromptEndPosition && structure.staticPromptEndPosition > 0 && structure.staticPromptEndPosition < fieldContent.length) {
+              fieldContent = fieldContent.substring(0, structure.staticPromptEndPosition);
+            }
+          }
+          
+          contents.push(fieldContent);
           match = true;
           return;
         }

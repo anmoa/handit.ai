@@ -67,6 +67,12 @@ export default (sequelize, DataTypes) => {
       field: 'external_id',
       comment: 'External ID of the agent execution'
     },
+    sessionId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'session_id',
+      comment: 'Session ID of the agent execution'
+    },
     errorDetails: {
       type: DataTypes.JSON,
       allowNull: true,

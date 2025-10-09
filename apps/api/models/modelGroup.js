@@ -4,6 +4,7 @@ export default (sequelize, DataTypes) => {
   class ModelGroup extends Model {
     static associate(models) {
       ModelGroup.belongsTo(models.Company, { foreignKey: 'company_id' });
+      ModelGroup.hasMany(models.Model, { foreignKey: 'model_group_id', as: 'Models' });
     }
 
     async getCompany() {

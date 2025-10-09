@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your AI Setup Is Almost Complete 🚀</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 60px 40px;
+        background: #ffffff url('cid:bg-real') no-repeat top center;
+        background-size: cover;
+        border-radius: 16px;
+        box-sizing: border-box;
+      }
+
+      .logo {
+        display: block;
+        margin-left: auto;
+        margin-bottom: 40px;
+        width: 180px;
+        height: auto;
+      }
+
+      .greeting {
+        font-size: 16px;
+        margin-bottom: 24px;
+        color: #00272f;
+      }
+
+      .main-text {
+        font-size: 15px;
+        margin-bottom: 20px;
+        color: #00272f;
+        line-height: 1.6;
+      }
+
+      .highlight-box {
+        background: rgba(2, 247, 170, 0.05);
+        border-left: 4px solid #02f7aa;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 24px 0;
+      }
+
+      .highlight-box p {
+        margin: 0;
+        font-size: 15px;
+        color: #00272f;
+        line-height: 1.6;
+      }
+
+      .benefits {
+        margin: 24px 0;
+        background: rgba(2, 247, 170, 0.03);
+        border-radius: 8px;
+        padding: 20px;
+        border-left: 3px solid #02f7aa;
+      }
+
+      .benefit-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 12px;
+        font-size: 15px;
+        color: #00272f;
+        line-height: 1.5;
+      }
+
+      .benefit-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .benefit-item::before {
+        content: "✅";
+        margin-right: 12px;
+        flex-shrink: 0;
+        font-size: 16px;
+      }
+
+      .cta-section {
+        text-align: center;
+        margin: 32px 0;
+        padding: 24px;
+        background: rgba(2, 247, 170, 0.05);
+        border-radius: 8px;
+        border: 2px solid #02f7aa;
+      }
+
+      .cta-button {
+        display: inline-block;
+        background: #02f7aa;
+        color: #00272f !important;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 16px;
+        padding: 14px 28px;
+        border-radius: 8px;
+        transition: background-color 0.2s;
+        margin-bottom: 12px;
+      }
+
+      .cta-button:hover {
+        background: #00d4aa;
+      }
+
+      .cta-text {
+        font-size: 14px;
+        color: #00272f;
+        margin: 8px 0 16px 0;
+        font-style: italic;
+      }
+
+      .secondary-cta {
+        display: block;
+        margin-top: 16px;
+        color: #02f7aa !important;
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .signature {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(0, 39, 47, 0.2);
+        font-size: 15px;
+        color: #00272f;
+      }
+
+      .signature-name {
+        font-weight: 600;
+        color: #00272f;
+        margin-bottom: 4px;
+      }
+
+      .signature-title {
+        font-size: 14px;
+        color: #00272f;
+        margin-bottom: 4px;
+      }
+
+      .signature-company {
+        font-weight: 500;
+        color: #02f7aa;
+      }
+
+      @media screen and (max-width: 600px) {
+        .container {
+          padding: 40px 20px;
+        }
+        
+        .logo {
+          width: 100px;
+          margin-top: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <img class="logo" src="cid:logo" alt="Handit.ai" />
+      
+      <div class="greeting">
+        Hey {{firstName}},
+      </div>
+
+      <p class="main-text">
+        I'm Cristhian, CTO at Handit.ai.
+      </p>
+
+      <p class="main-text">
+        I saw you signed up {{daysSinceSignup}} days ago 🎉 but haven't set up your first agent yet—and until you do, 
+        Handit can't start catching AI failures, alerting you when your AI goes off the rails, or fixing those issues for you.
+      </p>
+
+      <p class="main-text">
+        If you'd like, I'd be happy to personally hop on a quick call with you, screenshare, 
+        and get your first agent running. We can walk through everything and tackle any questions on the spot.
+      </p>
+
+      <div class="cta-section">
+        <a href="https://calendly.com/cristhian-handit/30min" class="cta-button">
+          📅 Book a 15-min Setup Call with Me
+        </a>
+        <div class="cta-text">I'll personally walk you through everything and get you set up</div>
+        <a href="{{quickstartUrl}}" class="secondary-cta">
+          Or try the solo setup guide if you prefer
+        </a>
+      </div>
+
+      <p class="main-text">
+        Once you're set up, here's what Handit will do for you:
+      </p>
+
+      <div class="benefits">
+        <div class="benefit-item">Catch silent AI failures before your users or teammates notice</div>
+        <div class="benefit-item">Auto‑generate and A/B‑test fixes instead of patching by hand</div>
+        <div class="benefit-item">See your agent actually improve itself with each run</div>
+      </div>
+
+      <div class="highlight-box">
+        <p><strong>Quick setup:</strong> Most teams get their first agent running in under 5 minutes. Once connected, you'll see real-time monitoring and automatic error detection.</p>
+      </div>
+
+      <p class="main-text">
+        Teams that connect agents see 97.8% success rates and +62% accuracy improvements within the first week. 
+        Your AI starts learning from failures and gets better automatically.
+      </p>
+
+      <p class="main-text">
+        But honestly, the fastest way to get value from Handit is to just grab 15 minutes with me. 
+        I can show you exactly how to set everything up for your specific use case.
+      </p>
+
+      <div class="signature">
+        <div class="signature-name">— Cristhian</div>
+        <div class="signature-title">CTO & Co‑Founder</div>
+        <div class="signature-company">Handit.ai</div>
+      </div>
+    </div>
+  </body>
+</html> 

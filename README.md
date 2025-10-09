@@ -1,156 +1,377 @@
+
 <p align="center">
-  <img width="903" alt="Screenshot 2025-05-21 at 11 09 55 AM" src="https://github.com/user-attachments/assets/e40d816e-3b2f-4abc-9bfb-400528db2b0d" />
+  <!-- shows in LIGHT mode only -->
+  <img src="./apps/dashboard/public/assets/overview/handit-small-3.png#gh-light-mode-only" width="400" style="object-fit: cover; object-position: center;" alt="Handit logo" />
+  <!-- shows in DARK mode only -->
+  <img src="./apps/dashboard/public/assets/overview/handit-small-1.png#gh-dark-mode-only" width="400" style="object-fit: cover; object-position: center;" alt="Handit logo (dark)" />
 </p>
 
+<p align="center">
+  <strong>🔥 Your AI Teammate That Fixes Your AI 24/7 🔥</strong>
+</p>
 
-# 🖐️ Handit - The Open Source Engine that Auto-Improves Your AI
+<p align="center">
+  Handit catches failures, writes fixes, tests them, and ships PRs, automatically. Like having a dedicated teammate for your AI, except it works 24/7.
+</p>
 
-Handit evaluates every agent decision, auto-generates better prompts and datasets, A/B-tests the fix, and lets you control what goes live.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@handit.ai/handit-ai">
+    <img src="https://img.shields.io/npm/v/@handit.ai/handit-ai?style=flat&logo=npm&logoColor=white&color=CB3837&labelColor=000000" alt="npm version">
+  </a>
+  <a href="https://pypi.org/project/handit-ai/">
+    <img src="https://img.shields.io/pypi/v/handit-ai?style=flat&logo=pypi&logoColor=white&color=3776AB&labelColor=000000" alt="pypi version">
+  </a>
+  <a href="https://github.com/handit-ai/handit.ai/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green?style=flat&logo=opensourceinitiative&logoColor=white&labelColor=000000" alt="license">
+  </a>
+  <a href="https://github.com/handit-ai/handit.ai">
+    <img src="https://img.shields.io/github/stars/handit-ai/handit.ai?style=flat&logo=github&logoColor=white&color=yellow&labelColor=000000" alt="GitHub stars">
+  </a>
+  <a href="https://discord.com/invite/XCVWYCFen6" target="_blank">
+    <img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=flat&logo=discord&logoColor=white&labelColor=000000" alt="Discord">
+  </a>
+</p>
 
-Handit is a **developer-first, open-source platform that automatically improves your AI agents** in real-world settings.  
-It's designed to **evaluate**, **auto-generate improvements**, and **test fixes** for any AI agent you've deployed.
-
-This isn't another wrapper.  
-This is the auto-improvement engine your agents have been missing.
-
----
-
-## ✨ What Handit Delivers
-
-Handit automatically improves every part of your AI agents—evaluating decisions, generating fixes, and testing improvements.
-
-- 🔍 **Evaluate Everything**  
-  Automatically assess every agent decision—inputs, outputs, tool calls, reasoning—across every node. Detect issues, hallucinations, and performance gaps in real-time.
-
-- 🤖 **Auto-Generate Improvements**  
-  Automatically create better prompts, datasets, and configurations based on detected issues. Let AI improve your AI with targeted fixes for specific failure patterns.
-
-- 🧪 **A/B Test Automatically**  
-  Test improvements against your current setup with intelligent A/B testing. Compare performance, measure impact, and validate fixes before they go live.
-
-- 🎛️ **Control What Goes Live**  
-  You decide what improvements to deploy. Review auto-generated fixes, approve changes, and roll back if needed. Full control over your agent's evolution.
-
-- ✍️ **Version Everything**  
-  Track every change, improvement, and rollback. Complete version control for prompts, datasets, and configurations—by node, model, or project.
-
-> If your agent is in production, Handit automatically finds what's broken and fixes it—with your approval.
-
----
-
-## 📅 Roadmap
-
-| Week | Focus                                               | Status         |
-|------|------------------------------------------------------|----------------|
-| 1    | Backend foundation + infrastructure                 | ✔️ Done |
-| 2    | Prompt versioning + A2A routing logic               | ✔️ Done |
-| 3    | Auto-evaluation + insight generation                | ✔️ Done |
-| 4    | Deployment setup + UI + public release              | ✔️ Done |
+<p align="center">
+  <a href="https://docs.handit.ai/quickstart">🚀 Quick Start</a> •
+  <a href="https://docs.handit.ai/">📋 Core Features</a> •
+  <a href="https://docs.handit.ai/">📚 Docs</a> •
+  <a href="https://calendly.com/cristhian-handit/30min">📅 Schedule a Call</a>
+</p>
 
 ---
 
-## 🧪 Project Status
+## 🎯 What is handit.ai?
 
-Handit is now open source and in active development!
+**handit.ai solves AI reliability.**
 
-This repo is live—but the full system is still under construction.  
-Early adopters and contributors are welcome to **follow the build**, **open issues**, and **help shape what comes next**.
+Modern AI applications are fragile – they hallucinate, break schemas, leak PII, and fail silently. When your AI fails at 2am, customers complain, and you're debugging blind. Did the model change? Is a tool broken? Is there a logic error? Without visibility, you're playing whack-a-mole with quality issues.
+
+**handit.ai is your AI teammate** that monitors your AI 24/7, detects issues, generates fixes, tests them against real data, and ships them as pull requests—all automatically.
+
+Write JavaScript, TypeScript, Python, and more. What used to take manual debugging and firefighting now happens automatically with handit.ai.
+
 
 ---
 
-## 🚀 Getting Started
+---
 
-Handit is designed to be easy to run locally with Docker Compose. You can get both the backend (API) and frontend (dashboard) running with a single command.
+## 🚀 Quick Start
 
-### 1. Prerequisites
-- [Docker](https://www.docker.com/get-started) & [Docker Compose](https://docs.docker.com/compose/)
-- (Optional for advanced users) [Node.js](https://nodejs.org/) and [PostgreSQL](https://www.postgresql.org/)
+Get your AI teammate up and running in under 5 minutes:
 
-### 2. Clone the Repository
+### 1. Start the Setup Process
+
+Navigate to your AI project directory and run:
+
 ```bash
+npx @handit/cli setup
+```
+
+The CLI will guide you through connecting your AI teammate:
+
+- 🔧 **Connect your handit.ai account**
+- 📱 **Install the handit SDK** in your project
+- 🔑 **Configure your API key** for monitoring
+- 🧠 **Connect evaluation models** (OpenAI, Together AI, etc.)
+- 🔗 **Connect your GitHub repository** for automated PRs
+
+### 3. Verify Your Setup
+
+✅ **Check your dashboard**: Go to [dashboard.handit.ai](https://dashboard.handit.ai) - you should see:
+- Tracing data flowing in real-time
+- Quality scores for evaluated interactions
+- Agent Performance showing baseline metrics
+
+✅ **Confirm GitHub integration**: Check your repository - you should see:
+- handit app installed in repository settings
+- Ready for PRs - your AI teammate can now create pull requests
+
+**That's it!** Your AI teammate is now monitoring your AI, evaluating quality, and ready to create pull requests with fixes whenever issues are detected.
+
+### Manual Setup (Advanced)
+
+**Need custom control?** Add monitoring decorators manually to your agent functions:
+
+#### 1. Install the SDK
+
+```bash
+# Python
+pip install handit-ai
+
+# JavaScript/TypeScript  
+npm install @handit.ai/handit-ai
+```
+
+#### 2. Add monitoring to your main agent function
+
+**Python:**
+```python
+# Auto-generated by handit-cli setup
+from handit_ai import tracing, configure
+import os
+ 
+configure(HANDIT_API_KEY=os.getenv("HANDIT_API_KEY"))
+ 
+# Tracing added to your main agent function (entry point)
+@tracing(agent="customer-service-agent")
+async def process_customer_request(user_message: str):
+    # Your existing agent logic (unchanged)
+    intent = await classify_intent(user_message)      # Not traced individually
+    context = await search_knowledge(intent)          # Not traced individually  
+    response = await generate_response(context)       # Not traced individually
+    return response
+```
+
+**JavaScript:**
+```javascript
+// Auto-generated by handit-cli setup
+import { configure, startTracing, endTracing } from '@handit.ai/handit-ai';
+ 
+configure({
+  HANDIT_API_KEY: process.env.HANDIT_API_KEY
+});
+ 
+// Tracing added to your main agent function (entry point)
+export const processCustomerRequest = async (userMessage) => {
+  startTracing({ agent: "customer-service-agent" });
+  try {
+    // Your existing agent logic (unchanged)
+    const intent = await classifyIntent(userMessage);     // Not traced individually
+    const context = await searchKnowledge(intent);       // Not traced individually
+    const response = await generateResponse(context);     // Not traced individually
+    return response;
+    } finally {
+    endTracing();
+  }
+};
+```
+
+**That's it!** Check [dashboard.handit.ai](https://dashboard.handit.ai) to see your traces.
+
+---
+
+## 🎯 How It Works
+
+### 🔍 **Detect** - Real-Time Failure Detection
+**On-Call 24/7**: Monitors every request, catches failures in real-time before customers complain.
+
+- Hallucinations and incorrect responses
+- Schema breaks and validation errors  
+- PII leaks and security issues
+- Performance degradation and timeouts
+
+### 🧠 **Diagnose & Fix** - Automated Fix Generation
+**Insights**: Analyzes root causes, generates fixes and tests solutions on actual failure cases in production.
+
+- Prompt improvements and optimizations
+- Configuration changes and guardrails
+- Code fixes for logic errors
+- Model parameter adjustments
+
+### 📝 **Ship** - GitHub-Native Deployment
+**Opens PRs with proven fixes**: You review and merge, or auto-deploy with guardrails.
+
+- Tested fixes with real performance data
+- Detailed explanations of changes
+- A/B testing results and metrics
+- Rollback capabilities
+
+---
+
+## 🎯 Examples
+
+### 🏆 **[Unstructured to Structured](https://github.com/Handit-AI/handit-examples/tree/main/examples/unstructured-to-structured)**
+
+Self-improving AI agent that automatically converts messy, unstructured documents into clean, structured data and CSV tables. Perfect for processing invoices, purchase orders, contracts, medical reports, and any other document types. But here's the kicker - **it actually gets better at its job over time**.
+
+**[Source Code →](https://github.com/Handit-AI/handit-examples/tree/main/examples/unstructured-to-structured)**
+
+> ![Unstructured to Structured in action](https://raw.githubusercontent.com/Handit-AI/handit-examples/main/examples/unstructured-to-structured/assets/cover/cover.gif)
+
+**Key Features:** ✨
+- **Schema Inference** 🔍: AI analyzes documents and creates optimal JSON structure
+- **Data Extraction** 📊: Maps document fields to schema with confidence scoring
+- **CSV Generation** 📋: Automatically creates organized tables for data visualization
+- **Multimodal Support** 🖼️: Handles images, PDFs, and text files
+- **Session Management** 🗂️: Isolated processing for different document batches
+- **Self-improvement** 🧠: Handit observes every agent interaction, and if a failure is detected, it automatically fixes it
+
+**Technologies:** 🛠️ Python, LangGraph, LangChain, OpenAI, FastAPI, Pandas, Handit.ai
+
+---
+
+## 🌐 Language Support
+
+Write your AI agents in your preferred language:
+
+| Language       | Status        | SDK Package           |
+| -------------- | ------------- | --------------------- |
+| **Python**     | ✅ Stable      | [`handit-ai>=0.0.62`](https://pypi.org/project/handit-ai/)  |
+| **JavaScript** | ✅ Stable      | [`@handit.ai/handit-ai`](https://www.npmjs.com/package/@handit.ai/handit-ai)     |
+| **TypeScript** | ✅ Stable      | [`@handit.ai/handit-ai`](https://www.npmjs.com/package/@handit.ai/handit-ai)     |
+| **Go**         | ✅ Available | HTTP API integration          |
+| **Any Stack/Framework** | ✅ Available | HTTP API integration (n8n, Zapier, etc.) |
+| **Java, C#, Ruby, PHP** | ✅ Available | REST API integration |
+| **LangChain & LangGraph** | ✅ Available | Python/JS SDK |
+| **LlamaIndex, AutoGen** | ✅ Available | Python/JS SDK + HTTP API |
+| **CrewAI, Swarm** | ✅ Available | Python SDK + HTTP API |
+
+---
+
+## 🎯 Real Results
+
+See how teams eliminated their AI firefighting with handit.ai:
+
+### **Aspe.ai**
+ASPE.ai was running a high-stakes agent that was silently failing every time. Within 48 hours of connecting handit, the system identified the issue, tested fixes, and deployed the new prompts.
+
+- **+62.3%** Accuracy improvement
+- **+36%** Response relevance  
+- **+97.8%** Success rate
+
+### **XBuild**
+XBuild's AI was suffering from prompt drift that tanked performance across key models. handit stepped in, ran automatic A/B tests, and deployed the top-performing versions.
+
+- **+34.6%** Accuracy improvement
+- **+19.1%** Success rate
+- **+6600** Automatic evaluations
+
+---
+
+
+## 🛠️ Advanced: Manual Setup
+
+**Advanced users only.** If you need custom control over your AI teammate setup, you can manually add monitoring code instead of using the CLI.
+
+**When to use manual setup:**
+- Custom deployment environments
+- Complex agent architectures  
+- Need granular control over monitoring
+
+**Quick manual setup:**
+- [Manual Setup Guide](https://docs.handit.ai/manual-setup) - Add decorators yourself
+- [Advanced Setup](https://docs.handit.ai/advanced-setup) - Node-by-node monitoring
+
+### Troubleshooting
+
+❌ **CLI command not found?**
+- **Solution:** Install Node.js first: `node --version` (should show v16+)
+- If still failing: Try `npx @handit/cli setup` directly
+
+❌ **"Authentication failed" during setup?**
+- **Solution:** Check your Handit.ai account credentials at [dashboard.handit.ai](https://dashboard.handit.ai)
+- If still failing: Try logging out and back in to your Handit account
+
+❌ **No traces appearing in dashboard?**
+- **Solution:** Run `npx @handit/cli setup` again to regenerate configuration
+- Check: Your generated code is actually being executed (not just imported)
+- Verify: API key was set correctly: `echo $HANDIT_API_KEY`
+
+❌ **Evaluations not running?**
+- **Solution:** Re-run `npx @handit/cli setup` to verify model connections
+- Check: Model tokens have sufficient credits in your provider dashboard
+- Verify: Your AI is receiving traffic (evaluations only run on active agents)
+
+❌ **GitHub app installation failed?**
+- **Solution:** Ensure you have admin access to the repository
+- Try: `npx @handit/cli setup` again to reinstall the app
+- Check: Repository permissions in GitHub Settings → Applications
+
+---
+
+## 🌐 Language Support
+
+Write your AI agents in your preferred language:
+
+| Language       | Status        | SDK Package           |
+| -------------- | ------------- | --------------------- |
+| **Python**     | ✅ Stable      | [`handit-ai>=0.0.62`](https://pypi.org/project/handit-ai/)  |
+| **JavaScript** | ✅ Stable      | [`@handit.ai/handit-ai`](https://www.npmjs.com/package/@handit.ai/handit-ai)     |
+| **TypeScript** | ✅ Stable      | [`@handit.ai/handit-ai`](https://www.npmjs.com/package/@handit.ai/handit-ai)     |
+| **Go**         | ✅ Available | HTTP API integration          |
+| **Any Stack/Framework** | ✅ Available | HTTP API integration (n8n, Zapier, etc.) |
+| **Java, C#, Ruby, PHP** | ✅ Available | REST API integration |
+| **LangChain & LangGraph** | ✅ Available | Python/JS SDK |
+| **LlamaIndex, AutoGen** | ✅ Available | Python/JS SDK + HTTP API |
+| **CrewAI, Swarm** | ✅ Available | Python SDK + HTTP API |
+
+---
+
+## 🏆 Trusted by Teams Who Ship Production AI
+
+**Open source because you need to trust what pushes to prod.**
+
+![Trusted by Teams](./apps/dashboard/public/assets/overview/trusted-by.png)
+
+---
+
+### 💬 **Get Help**
+- **📋 Questions**: Use our [Discord community](https://discord.com/invite/XCVWYCFen6)
+- **🐛 Bug Reports**: [GitHub Issues](https://github.com/handit-ai/handit.ai/issues)
+- **📖 Documentation**: [Official Docs](https://docs.handit.ai)
+- **📅 Schedule a Call**: [Book a Demo](https://calendly.com/cristhian-handit/30min)
+
+---
+
+## 🚧 Roadmap
+
+We have a public roadmap for handit.ai. You can view it [here](https://github.com/handit-ai/handit.ai/projects/1).
+
+Feel free to add comments to the issues, or create a new issue if you have a feature request.
+
+| Feature | Status | Link | Description |
+|---------|--------|------|-------------|
+| Advanced Prompt Optimization | Planned | [#485](https://github.com/handit-ai/handit.ai/issues/485) | Multi-model prompt optimization |
+| Custom Evaluation Metrics | Planned | [#495](https://github.com/handit-ai/handit.ai/issues/495) | User-defined evaluation criteria |
+| Real-time Dashboard | Planned | [#497](https://github.com/handit-ai/handit.ai/issues/497) | Live monitoring interface |
+| Auto-deployment | Planned | [#476](https://github.com/handit-ai/handit.ai/issues/476) | Automated deployment with guardrails |
+| Multi-agent Support | Planned | [#477](https://github.com/handit-ai/handit.ai/issues/477) | Complex agent orchestration |
+| Custom Integrations | Planned | [#480](https://github.com/handit-ai/handit.ai/issues/480) | Third-party tool integrations |
+
+---
+
+## 📚 Resources
+
+- 📖 **[Documentation](https://docs.handit.ai)** - Complete guides and API reference
+- 💬 **[Discord](https://discord.gg/handit-ai)** - Community support and discussions  
+- 🐛 **[GitHub Issues](https://github.com/handit-ai/handit.ai/issues)** - Bug reports and feature requests
+- 🎥 **[Demo](https://handit.ai)** - See handit in action
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Whether it's:
+- 🐛 Bug fixes and improvements
+- ✨ New features
+- 📚 Documentation and examples
+- 🌍 Language support additions
+- 🎨 Dashboard UI enhancements
+
+Check our [Contributing Guide](CONTRIBUTING.md) to get started.
+
+### Development Setup
+
+```bash
+# Clone the repository
 git clone https://github.com/handit-ai/handit.ai.git
 cd handit.ai
+
+# Install dependencies
+npm install
+
+# Start development environment
+npm run dev
 ```
-
-### 3. Environment Variables
-Create a `.env` file in the root directory (or set the variables in your shell):
-```
-DB_USERNAME=your_db_user
-DB_PASSWORD=your_db_password
-DB_NAME=your_db_name
-```
-You can also add any other environment variables required by the API or dashboard.
-
-### 4. Run in Development Mode
-This uses `docker-compose.dev.yml` for hot-reloading and local development:
-```bash
-docker compose -f docker-compose.dev.yml up --build
-```
-- Frontend: [http://localhost:3000](http://localhost:3000)
-- API: [http://localhost:3001/api](http://localhost:3001/api)
-- Database: localhost:5432 (Postgres)
-- Redis: localhost:6379
-
-### 5. Run in Production Mode
-This uses `docker-compose.yml` for a production-like environment:
-```bash
-docker compose -f docker-compose.yml up --build
-```
-- Frontend: [http://localhost:3000](http://localhost:3000)
-- API: [http://localhost:3001/api](http://localhost:3001/api)
-
-### 6. Manual Local Setup (Advanced)
-If you want to run the backend and frontend separately (without Docker):
-- Install dependencies in each app:
-  ```bash
-  cd apps/api && npm install
-  cd ../dashboard && npm install
-  ```
-- Start Postgres and Redis locally, and set up your `.env` files.
-- Run the backend:
-  ```bash
-  cd apps/api
-  npm run dev
-  ```
-- Run the frontend:
-  ```bash
-  cd apps/dashboard
-  npm run dev
-  ```
-
----
-
-## 📚 Documentation
-
-- Docs and hosted playground coming soon  
-- For updates, follow the creators:
-  - [Cristhian Neira](https://www.linkedin.com/in/cristhian-neira)
-  - [Oliver Tex](https://www.linkedin.com/in/oliver-tex/)
-    
----
-
-## ✏️ Contributing
-
-Want to help build the future of LLM agent optimization?  
-We'll soon add:
-
-- `CONTRIBUTING.md`
-- Open issues
-- Early test environments
-- Handit SDKs
-
-Join the Discord and say hi: <a href="https://discord.gg/fnWyEC4t" target="_blank">https://discord.gg/fnWyEC4t</a>
-
----
 
 ## 👥 Contributors
 
 Thanks to everyone helping bring Handit to life:
 
-<a href="https://github.com/handit-ai/handit.ai/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=handit-ai/handit.ai" />
+<a href="https://github.com/handit-ai/autonom/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=handit-ai/autonom" />
 </a>
-
 
 > Want to appear here? Star the repo, follow along, and make your first PR 🙌
 
@@ -158,6 +379,39 @@ Thanks to everyone helping bring Handit to life:
 
 ## 📄 License
 
-MIT © 2025 – Built with 💡 by the Handit community
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🆘 Need Help?
+
+- **Community**: [Discord](https://discord.gg/handit-ai) for real-time help
+- **Support**: [Contact Us](https://calendly.com/cristhian-handit/30min) for technical issues
+- **Documentation**: [docs.handit.ai](https://docs.handit.ai) for comprehensive guides
+- **Advanced**: [Manual Setup](https://docs.handit.ai/manual-setup) for custom configurations
+
+---
+
+<div align="center">
+
+**Stop Being Your AI's On-Call Engineer**
+
+Let handit.ai handle the 2am failures while you focus on building features.
+
+[**Get Started Free**](https://dashboard.handit.ai) • [**View on GitHub**](https://github.com/handit-ai/handit.ai) • [**Join Discord**](https://discord.gg/handit-ai)
+
+*Open source. GitHub-native. Starts working in minutes.*
+
+</div>
+
+---
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=handit-ai/handit.ai&type=Date)](https://www.star-history.com/#handit-ai/handit.ai&Date)
+
+<sub>Built with ❤️ by the Handit team • **Star us if you find Handit useful!** ⭐</sub>
+
+</div>
 
 

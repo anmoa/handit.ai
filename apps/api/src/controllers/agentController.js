@@ -16,8 +16,9 @@ import { updateAgentEntriesCache } from '../services/agentService.js';
 import { parseAgentConfig } from '../services/agentConfigParser.js';
 import { createAgentFromConfig } from '../services/agentCreationService.js';
 import { createAgentFromTracing } from '../services/agentTracingService.js';
+import { generateSlug } from '../utils/slugGenerator.js';
 
-const { Agent, AgentNode, Model, Company, AgentConnection } = db;
+const { Agent, AgentNode, Model, Company, AgentConnection, AgentLog } = db;
 
 export const create = async (req, res) => {
   try {
@@ -32,7 +33,9 @@ export const getAllAgents = async (req, res) => {
   try {
     const { userObject } = req;
     const { companyId } = userObject;
-    const agents = await getAllAgentsFunction(companyId);
+    const tourAgent = req.query.tourAgent === 'true';
+    const agents = await getAllAgentsFunction(companyId, tourAgent);
+
     res.status(200).json(agents);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -56,6 +59,79 @@ export const update = async (req, res) => {
     const agent = await updateAgentFunction(req.params.id, req);
     res.status(200).json(agent);
   } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const updateBySlug = async (req, res) => {
+  try {
+    let slug =  req.params.slug;
+    const { userObject } = req;
+    const { companyId } = userObject;
+    const { sessionId } = req.body;
+    slug = generateSlug(slug);
+
+    let agent = null;
+
+    // If sessionId is provided, try to find agent through AgentLog
+    if (sessionId) {
+      const agentLog = await AgentLog.findOne({ 
+        where: { sessionId }
+      });
+      if (agentLog && agentLog.agentId) {
+        agent = await Agent.findByPk(agentLog.agentId);
+      }
+    }
+
+    // If no agent found through sessionId or sessionId not provided, use regular slug logic
+    if (!agent) {
+      agent = await Agent.findOne({ where: { slug, companyId } });
+    }
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    await agent.update({...agent, ...req.body});
+    res.status(200).json(agent);
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const getAgentBySlug = async (req, res) => {
+  try {
+    let slug = req.params.slug;
+    const { userObject } = req;
+    const { companyId } = userObject;
+    const { sessionId } = req.query;
+    slug = generateSlug(slug);
+
+    let agent = null;
+
+    // If sessionId is provided, try to find agent through AgentLog
+    if (sessionId) {
+      const agentLog = await AgentLog.findOne({ 
+        where: { sessionId }
+      });
+      if (agentLog && agentLog.agentId) {
+        agent = await Agent.findByPk(agentLog.agentId);
+      }
+    }
+
+    // If no agent found through sessionId or sessionId not provided, use regular slug logic
+    if (!agent) {
+      agent = await Agent.findOne({ where: { slug, companyId } });
+    }
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    res.status(200).json(agent);
+  } catch (error) {
+    console.log(error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -96,8 +172,18 @@ export const updateConnection = async (req, res) => {
   }
 };
 
-export const getAllAgentsFunction = async (companyId) => {
-  const agents = await Agent.findAll({ where: { companyId } });
+export const getAllAgentsFunction = async (companyId, tourAgent = false) => {
+  if (tourAgent) {
+    const agents = await Agent.findAll({ where: { tourAgent: true } });
+    return agents;
+  }
+  const agents = await Agent.findAll({ where: { companyId, tourAgent }, include: [{
+    model: AgentNode,
+    include: [{
+      model: Model,
+      as: 'Model',
+    }],
+  }] });
   return agents;
 };
 
@@ -121,6 +207,30 @@ export const createAgentFunction = async (req, res) => {
   } catch (error) {
     console.log(error);
     throw error;
+  }
+};
+
+export const createAgentByName = async (req, res) => {
+  try {
+    const name = req.body.name;
+    const repository = req.body.repository;
+    const { userObject } = req;
+    const { companyId } = userObject;
+    const agentSlug = name ? generateSlug(name) : null;
+    let agent = await Agent.findOne({ where: { slug: agentSlug, companyId } });
+    if (agent) {
+      return res.status(200).json(agent);
+    }
+    agent = await Agent.create({
+      name: name,
+      description: 'Automatically created agent from tracking request',
+      slug: agentSlug,
+      repository: repository,
+      companyId: companyId,
+    });
+    res.status(201).json(agent);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 };
 
@@ -151,7 +261,6 @@ export const getAgentByIdFunction = async (req, id) => {
     const agent = await Agent.findOne({
       where: {
         id: req.params.id,
-        companyId,
       },
       include: [
         {
@@ -170,8 +279,14 @@ export const getAgentByIdFunction = async (req, id) => {
       ],
     });
 
+    if (!agent.tourAgent && agent.companyId !== companyId) {
+      console.log('agent not found');
+      return null;
+    }
+
     if (!agent) {
-      throw new Error('Agent not found');
+      console.log('agent not found');
+      return null;
     }
 
     return agent;
@@ -575,7 +690,10 @@ export const getAgentMetrics = async (req, res) => {
     const company = await db.Company.findOne({
       where: { id: userObject.companyId },
     });
-    if (company.testMode) {
+    const agent = await db.Agent.findOne({
+      where: { id: req.params.id },
+    });
+    if (company.testMode || agent.tourAgent || agent.demoAgent) {
       const data = await generateMockDetailedMetrics(req.params.id);
       return res.status(200).json(data);
     }
@@ -700,7 +818,10 @@ export const getAgentComparisonMetricsLastMonthAgent = async (req, res) => {
     const company = await db.Company.findOne({
       where: { id: companyId },
     });
-    if (company.testMode) {
+    const agent = await db.Agent.findOne({
+      where: { id: req.params.id },
+    });
+    if (company.testMode || agent.tourAgent || agent.demoAgent) {
       return res.status(200).json(generateMockToolComparisonMetrics());
     }
 
@@ -876,7 +997,10 @@ export const getAgentToolComparisonMetricsLastMonthAgent = async (req, res) => {
     const company = await db.Company.findOne({
       where: { id: companyId },
     });
-    if (company.testMode) {
+    const agent = await db.Agent.findOne({
+      where: { id: req.params.id },
+    });
+    if (company.testMode || agent.tourAgent || agent.demoAgent) {
       return res.status(200).json(generateMockToolComparisonMetrics());
     }
     // Get agent and verify access

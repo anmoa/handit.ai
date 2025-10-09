@@ -2,10 +2,12 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import session from 'express-session';
-import { Sequelize } from 'sequelize';
 import cors from 'cors';
 import compression from 'compression';
 import authRoutes from './routes/authRoutes.js';
+import cliAuthRoutes from './routes/cliAuthRoutes.js';
+import githubRoutes from './routes/githubRoutes.js';
+import githubOAuthRoutes from './routes/githubOAuthRoutes.js';
 import agentStructureRoutes from './routes/agentStructureRoutes.js';
 
 // Importing all route files
@@ -45,6 +47,12 @@ import evaluatorMetricRoutes from './routes/evaluatorMetricRoutes.js';
 import providersRoutes from './routes/providersRoutes.js';
 import reviewersTemplateRoutes from './routes/reviewersTemplateRoutes.js';
 import promptRoutes from './routes/promptRoutes.js';
+import emailRoutes from './routes/emailRoutes.js';
+import notificationSystemRoutes from './routes/notificationSystemRoutes.js';
+import emailAutonomRoutes from './routes/emailAutonomRoutes.js';
+import promptOptimizationRoutes from './routes/promptOptimizationRoutes.js';
+import ingestRoutes from './routes/ingestRoutes.js';
+import agentMaintenanceRoutes from './routes/agentMaintenanceRoutes.js';
 
 dotenv.config();
 
@@ -78,21 +86,30 @@ app.use(session({
 }));
 
 app.use('/api/setup', setupRouter);
+app.use('/api/email-autonom', emailAutonomRoutes);
 
 
 // Public routes
 app.use('/api/auth', authRoutes);
+app.use('/api/cli/auth', cliAuthRoutes);
+app.use('/api/git', githubRoutes);
+app.use('/api/auth/github', githubOAuthRoutes);
 app.use('/api/sampling', validateApiToken, samplingRoutes);
 app.use('/api/node-metrics', validateApiToken, nodeMetricsRoutes);
 app.use('/api/messages', validateApiToken, messageRouter);
 app.use('/api/agent-structure', validateApiToken, agentStructureRoutes);
 
+app.use('/api/email', emailRoutes);
+app.use('/api/ingest', ingestRoutes);
+app.use('/api/agent-maintenance', agentMaintenanceRoutes);
 
+app.use('/api/notification-system', notificationSystemRoutes);
 
 
 // Apply JWT authentication middleware to all routes except auth routes
 app.use(authenticateJWT);
 app.use('/api/prompts', promptRoutes);
+app.use('/api/setup-assistant', setupRouter);
 
 app.use('/api/evaluator', evaluatorRoutes);
 app.use('/api/automatic-optimization', automaticOptimizationRoutes);
@@ -124,6 +141,8 @@ app.use('/api/integration-tokens', integrationTokenRoutes);
 app.use('/api/evaluator-metrics', evaluatorMetricRoutes);
 app.use('/api/providers', providersRoutes);
 app.use('/api/reviewers-template', reviewersTemplateRoutes);
+app.use('/api/prompt-optimization', promptOptimizationRoutes);
+
 // Add sampling routes
 
 // Add setup routes

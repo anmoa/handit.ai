@@ -3,19 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Handit.AI Alert</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+    <title>Handit.ai Alert</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
       body {
         margin: 0;
         padding: 0;
-        font-family: 'Poppins', sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       }
 
       .container {
-        max-width: 600px;
+        max-width: 800px;
         margin: 0 auto;
-        padding: 60px 30px;
+        padding: 60px 40px;
         background: #ffffff url('cid:bg-image') no-repeat top center;
         background-size: cover;
         box-sizing: border-box;
@@ -30,46 +30,95 @@
         height: auto;
       }
 
-      h1 {
-        font-size: 22px;
-        font-weight: 600;
-        color: #00272f;
+      .greeting {
+        font-size: 16px;
         margin-bottom: 24px;
+        color: #00272f !important;
       }
 
-      p {
+      .main-text {
         font-size: 15px;
-        color: #00272f;
+        color: #00272f !important;
         margin: 12px 0;
         line-height: 1.6;
       }
 
       .label {
         font-weight: 600;
-        color: #02f7aa;
+        color: #02f7aa !important;
+      }
+
+      .details-box {
+        background: rgba(2, 247, 170, 0.05);
+        border-left: 4px solid #02f7aa;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 24px 0;
+      }
+
+      .details-box p {
+        margin: 8px 0;
+        font-size: 15px;
+        color: #00272f !important;
+        line-height: 1.4;
       }
 
       .button {
         display: inline-block;
-        margin-top: 30px;
-        padding: 12px 24px;
+        margin-top: 20px;
+        padding: 14px 28px;
         background-color: #02f7aa;
         color: #00272f !important;
         text-decoration: none;
         font-weight: 600;
         border-radius: 8px;
+        margin-right: 10px;
+        font-size: 16px;
+        transition: background-color 0.2s;
       }
 
-      .footer {
+      .button:hover {
+        background-color: #00d4aa;
+      }
+
+      .button-secondary {
+        background-color: #ffffff;
+        color: #02f7aa !important;
+        border: 2px solid #02f7aa;
+      }
+
+      .button-secondary:hover {
+        background-color: rgba(2, 247, 170, 0.05);
+      }
+
+      .button-container {
+        margin-top: 30px;
         text-align: center;
-        font-size: 13px;
-        color: #00272f;
-        margin-top: 40px;
       }
 
-      .footer a {
-        color: #00272f;
-        text-decoration: none;
+      .signature {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(0, 39, 47, 0.2);
+        font-size: 15px;
+        color: #00272f !important;
+      }
+
+      .signature-name {
+        font-weight: 600;
+        color: #00272f !important;
+        margin-bottom: 4px;
+      }
+
+      .signature-title {
+        font-size: 14px;
+        color: #00272f !important;
+        margin-bottom: 4px;
+      }
+
+      .signature-company {
+        font-weight: 500;
+        color: #02f7aa !important;
       }
 
       @media screen and (max-width: 600px) {
@@ -81,6 +130,13 @@
           width: 100px;
           margin-top: 10px;
         }
+        
+        .button {
+          display: block;
+          margin-bottom: 10px;
+          text-align: center;
+          margin-right: 0;
+        }
       }
     </style>
   </head>
@@ -88,18 +144,42 @@
     <div class="container">
       <img class="logo" src="cid:logo-image" alt="Handit.ai Logo" />
       
-      <h1>Automated Evaluation Alert</h1>
-      <p>We've identified a potential issue during the latest automated evaluation. Please review the details below:</p>
+      <div class="greeting">
+        Hello,
+      </div>
 
-      <p><span class="label">Agent:</span> {{agent_name}}</p>
-      <p><span class="label">Node:</span> {{node_name}}</p>
-      <p><span class="label">Summary:</span><br />{{{reviewer_summary}}}</p>
+      <p class="main-text">
+        Handit has detected an issue with one of your AI models and is automatically working on a fix. 
+        Here's what we found:
+      </p>
 
-      <a href="{{tracing_url}}" class="button">Review in Dashboard</a>
+      <div class="details-box">
+        <p><span class="label">Agent:</span> {{agent_name}}</p>
+        <p><span class="label">Node:</span> {{node_name}}</p>
+        <p><span class="label">Issue Summary:</span><br />
+          {{#each reviewer_summary}}
+            <p>{{this}}</p><br />
+          {{/each}}
+        </p>
+      </div>
 
-      <div class="footer">
-        &copy; {{year}} Handit.ai — Monitoring and optimizing AI systems in real time.<br />
-        <a href="mailto:contact@handit.ai">contact@handit.ai</a>
+      <p class="main-text">
+        Handit is currently analyzing this issue and will automatically implement a fix when ready. 
+        You can review the full details and monitor the progress in your dashboard.
+      </p>
+
+      <div class="button-container">
+        <a href="{{tracing_url}}" class="button">Review Details</a>
+      </div>
+
+      <p class="main-text">
+        Our automated monitoring continuously watches your models to catch issues before they impact 
+        your users and applies fixes automatically when possible.
+      </p>
+
+      <div class="signature">
+        <div class="signature-name">— The Handit Team</div>
+        <div class="signature-company">Handit.ai</div>
       </div>
     </div>
   </body>

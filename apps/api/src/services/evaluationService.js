@@ -128,12 +128,13 @@ export const singleEvaluate = async (entry, evaluator, prompts = [], isN8N = fal
   let parsedOutput;
 
   parsedOutput = parseEvaluatorsOutput(evaluation);
+  const status = isCorrect({ actual: parsedOutput }) ? 'success' : 'error';
 
   await updateModelLog(entry, {
     actual: parsedOutput,
     autoEvaluationProcessed: true,
     processed: true,
-    status: isCorrect({ actual: parsedOutput }) ? 'success' : 'error',
+    status: status,
   });
 
   for (const ev of evaluation) {
@@ -146,11 +147,11 @@ export const singleEvaluate = async (entry, evaluator, prompts = [], isN8N = fal
       modelLogId: entry.id,
       modelId: entry.modelId,
       evaluationPromptId: evaluationId,
-      isCorrect: score >= 8,
+      isCorrect: ev.isInformative ? null : score >= 8,
     });
   }
 
-  return { entry, evaluation };
+  return { entry, evaluation, status };
 };
 
 export const evaluateSamples = async (
@@ -268,7 +269,9 @@ export const parseLLMOutput = (output) => {
 };
 
 export const parseEvaluatorsOutput = (evaluations) => {
-  const accuracy = evaluations.every((evaluation) => evaluation.score >= 8);
+  // Only consider non-informative evaluators for correctness
+  const nonInformative = evaluations.filter(e => !e.isInformative);
+  const accuracy = nonInformative.length > 0 ? nonInformative.every((evaluation) => evaluation.score >= 8) : true;
   
   const output = {
     evaluations,
@@ -328,10 +331,68 @@ const evaluate = async (entry, prompts = [], isN8N = false) => {
     for (let i = 0; i < evaluatorPrompts.length; i++) {
       if (!parsedOutput || parsedOutput === null || parsedOutput === undefined || parsedOutput === '') continue;
       const evaluator = evaluatorPrompts[i];
+      const evaluatorPrompt = evaluator.evaluationPrompt.dataValues;
+      
+      // Check if this is a function-based evaluator
+      if (evaluatorPrompt.type === 'function') {
+        try {
+          // Create an async function from the function body
+          const evaluatorFunction = new Function('entry', 'parseInputContent', 'parseContext', 'parseOutputContent', 'parseAttachments', 'parsedOutput', 'context', 'observation', 'userContent', `
+            return (async () => {
+              ${evaluatorPrompt.functionBody}
+            })();
+          `);
+          
+          // Execute the async function with the same parameters as prompt evaluators
+          const result = await evaluatorFunction(entry, parseInputContent, parseContext, parseOutputContent, parseAttachments, parsedOutput, context, observation, userContent);
+          
+          // Validate the result structure
+          if (!result || typeof result !== 'object') {
+            throw new Error('Function evaluator must return an object');
+          }
+          
+          if (typeof result.score !== 'number' || result.score < 0 || result.score > 10) {
+            throw new Error('Function evaluator must return a score between 0 and 10');
+          }
+          
+          if (!result.analysis || typeof result.analysis !== 'string') {
+            throw new Error('Function evaluator must return an analysis string');
+          }
+          
+          if (!Array.isArray(result.errors)) {
+            throw new Error('Function evaluator must return an errors array');
+          }
+          
+          evaluations.push({
+            score: result.score,
+            analysis: result.analysis,
+            errors: result.errors,
+            evaluator: evaluatorPrompt.name,
+            evaluatorId: evaluatorPrompt.id,
+            isInformative: evaluatorPrompt.isInformative || false,
+          });
+          
+          continue; // Skip the prompt-based evaluation logic
+        } catch (error) {
+          console.error(`Error executing function evaluator ${evaluatorPrompt.name}:`, error);
+          // Fall back to a default evaluation if function fails
+          evaluations.push({
+            score: 0,
+            analysis: `Function evaluator failed: ${error.message}`,
+            errors: [`Function execution error: ${error.message}`],
+            evaluator: evaluatorPrompt.name,
+            evaluatorId: evaluatorPrompt.id,
+            isInformative: evaluatorPrompt.isInformative || false,
+          });
+          continue;
+        }
+      }
+      
+      // Original prompt-based evaluation logic
       const message = [
         {
           role: 'system',
-          content: evaluator.evaluationPrompt.dataValues.prompt
+          content: evaluatorPrompt.prompt
           + `### **Return a structured JSON response** in the following format:
           Return a structured JSON response with your assessment.
           
@@ -375,6 +436,20 @@ const evaluate = async (entry, prompts = [], isN8N = false) => {
           ].filter((item) => item !== null && item !== undefined && item !== ''),
         },
       ];
+      let defaultModel = evaluator.evaluationPrompt?.defaultProviderModel;
+      const provider = evaluator.evaluationPrompt?.defaultIntegrationToken?.provider?.name;
+      if (!defaultModel) {
+        if (provider === 'OpenAI') {
+          defaultModel = 'gpt-4o';
+        } else if (provider === 'TogetherAI') {
+          defaultModel = 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8';
+        } else if (provider === 'GoogleAI') {
+          defaultModel = 'gemini-2.0-flash';
+        } else if (provider === 'AWSBedrock') {
+          defaultModel = 'anthropic.claude-3-5-sonnet-20240620-v1:0';
+        }
+      }
+
       const completion = await generateAIResponse({
         messages: message,
         numberOfAttachments: imageAttachments.length,
@@ -385,8 +460,9 @@ const evaluate = async (entry, prompts = [], isN8N = false) => {
         }),
         isN8N: isN8N,
         token: evaluator.evaluationPrompt?.defaultIntegrationToken?.token,
+        tokenData: evaluator.evaluationPrompt?.defaultIntegrationToken?.data,
         provider: evaluator.evaluationPrompt?.defaultIntegrationToken?.provider?.name,
-        model: evaluator.evaluationPrompt?.defaultProviderModel,
+        model: defaultModel,
       });
 
 
@@ -394,6 +470,7 @@ const evaluate = async (entry, prompts = [], isN8N = false) => {
         ...JSON.parse(completion.choices[0].message.content),
         evaluator: evaluator.evaluationPrompt.name,
         evaluatorId: evaluator.evaluationPrompt.id,
+        isInformative: evaluatorPrompt.isInformative || false,
       });
     }
 

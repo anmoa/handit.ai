@@ -15,7 +15,6 @@ import { workspaces } from './workspaces-popover';
 import { useUser } from '@/hooks/use-user';
 import { useGetUserQuery } from '@/services/auth/authService';
 import { paths } from '@/paths';
-
 export function WorkspacesSwitch({ onlyIcon = false }) {
   const router = useRouter();
   const popover = usePopover();
@@ -63,7 +62,7 @@ export function WorkspacesSwitch({ onlyIcon = false }) {
       <Avatar 
         src={displayUser?.company?.icon && displayUser?.company?.icon.length > 0 
           ? displayUser?.company?.icon 
-          : workspace.avatar} 
+          : '/assets/logo 2.svg'} 
         variant="rounded" 
       />
       {onlyIcon ? null : (
@@ -117,7 +116,7 @@ export function WorkspacesSwitch({ onlyIcon = false }) {
             maxWidth: '200px'
           }}
         >
-          {displayUser?.company?.name || workspace.name}
+          {displayUser?.company?.name || workspace.name} (Prod)
         </MenuItem>
         <MenuItem 
           value="company-staging" 

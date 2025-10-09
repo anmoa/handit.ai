@@ -123,9 +123,114 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
 
   /**
    * Step Badge Component
-   * Displays the current step number in a circular badge
+   * Displays the current step number(s) in circular badge(s)
    */
-  const StepBadge = ({ steps, selectedCycle }) => {
+  const StepBadge = ({ steps, selectedCycle, disableCycles, allSteps }) => {
+    if (disableCycles && allSteps?.length > 0) {
+      // Show all steps when cycles are disabled
+      const nodeSteps = allSteps.sort((a, b) => a - b);
+      
+      if (nodeSteps.length === 1) {
+        return (
+          <Button
+            sx={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              minWidth: '24px',
+              width: '24px',
+              height: '24px',
+              p: 0,
+              background: '#1976d2',
+              color: 'white',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              transition: 'all 0.2s ease',
+              transform: 'scale(1.1)',
+              boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.3)',
+              '&:hover': {
+                background: '#1976d2',
+              },
+            }}
+          >
+            {nodeSteps[0]}
+          </Button>
+        );
+      } else if (nodeSteps.length <= 3) {
+        // Show individual badges for 2-3 steps
+        return (
+          <>
+            {nodeSteps.map((step, index) => (
+              <Button
+                key={step}
+                sx={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: `${10 + (index * 28)}px`,
+                  minWidth: '24px',
+                  width: '24px',
+                  height: '24px',
+                  p: 0,
+                  background: '#1976d2',
+                  color: 'white',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  transition: 'all 0.2s ease',
+                  transform: 'scale(1.1)',
+                  boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.3)',
+                  '&:hover': {
+                    background: '#1976d2',
+                  },
+                  zIndex: nodeSteps.length - index,
+                }}
+              >
+                {step}
+              </Button>
+            ))}
+          </>
+        );
+      } else {
+        // Show compact format for many steps: "1,2,3..."
+        const displayText = nodeSteps.length > 4 
+          ? `${nodeSteps.slice(0, 2).join(',')}...` 
+          : nodeSteps.join(',');
+        
+        return (
+          <Button
+            sx={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              minWidth: '40px',
+              height: '24px',
+              p: 0,
+              background: '#1976d2',
+              color: 'white',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              transition: 'all 0.2s ease',
+              transform: 'scale(1.1)',
+              boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.3)',
+              '&:hover': {
+                background: '#1976d2',
+              },
+            }}
+          >
+            {displayText}
+          </Button>
+        );
+      }
+    } else {
+      // Original logic for cycles enabled
     const index = selectedCycle?.steps?.findIndex(step => steps.includes(step));
     const title = selectedCycle?.steps?.[index];
 
@@ -157,7 +262,8 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
       >
         {title}
       </Button>
-    )
+      );
+    }
   };
 
   /**
@@ -205,10 +311,28 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
     return data.sequence.filter(step => !visibleSteps.includes(step));
   };
 
-  // Calculate step visibility
-  const visibleSteps = getVisibleSteps();
-  const remainingSteps = getRemainingSteps();
-  const showMoreButton = data.sequence?.length > 0;
+
+  // Determine test ID for onboarding
+  const getTestId = () => {
+    if (data.type === 'model') {
+      // Check if this is the first model node in sequence
+      const sequenceValue = data.sequence?.[0] || data.allSteps?.[0];
+      if (sequenceValue === 1) {
+        // Check status - if failed, it's the first failed node
+        if (data.status === 'failed' || data.status === 'error') {
+          return 'llm-node-failed-first';
+        } else {
+          // Otherwise it's the first success node
+          return 'llm-node-success-first';
+        }
+      }
+
+      if (data.status === 'failed' || data.status === 'error') {
+        return 'llm-node-failed-first';
+      } 
+    }
+    return undefined;
+  };
 
   return (
     <Card
@@ -231,6 +355,7 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
         transition: 'all 0.3s ease',
       }}
       onClick={data.onClick}
+      data-testid={getTestId()}
     >
       {/* Step Badge */}
       {(
@@ -239,6 +364,8 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
           <StepBadge
             steps={data.sequence}
             selectedCycle={data.selectedCycle}
+            disableCycles={data.disableCycles}
+            allSteps={data.allSteps}
           />
 
         </>
@@ -246,6 +373,75 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
 
       {/* Input Handles */}
       {renderHandles(data.inputs, 'target', Position.Top)}
+      
+      {/* Default handles for edge connection points */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          top: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          bottom: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          left: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          right: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
 
       {/* Node Content */}
       <Box sx={{ mt: 1 }}>
@@ -277,6 +473,44 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
                 {data.label}
               </Typography>
             </Box>
+
+            {/* Group Information */}
+            {data.group && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: 1,
+                  px: 1,
+                  py: 0.5,
+                  alignSelf: 'flex-start',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  mb: 1,
+                  display: 'block',
+                }}
+              >
+                Group: {data.group}
+              </Typography>
+            )}
+
+            {/* Status Indicator for AI Models */}
+            {data.type === 'model' && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: data.status === 'error' ? '#D32F2F' : '#4CAF50',
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '12px' }}>
+                  {data.status === 'error' ? 'Error' : 'Success'}
+                </Typography>
+              </Box>
+            )}
 
             {/* Model Category */}
             {data.modelCategory && (
@@ -319,6 +553,75 @@ export const MonitoringNode = React.memo(({ id, data, isConnectable }) => {
 
       {/* Output Handles */}
       {renderHandles(data.outputs, 'source', Position.Bottom)}
+      
+      {/* Default source handles for edge connection points */}
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          top: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          bottom: '8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          left: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
+      
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        isConnectable={isConnectable}
+        style={{
+          width: 8,
+          height: 8,
+          background: data.color || nodeColors[data.type],
+          border: '1px solid #fff',
+          right: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          visibility: 'hidden' // Hidden but functional for edge connections
+        }}
+      />
     </Card>
   );
 });

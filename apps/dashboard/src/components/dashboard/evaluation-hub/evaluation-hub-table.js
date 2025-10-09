@@ -250,12 +250,16 @@ export function EvaluationHubTable({ onNewEvaluator }) {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {paginatedEvaluators.map((evaluator) => (
+                            {paginatedEvaluators.filter(e => e.type === 'prompt').map((evaluator, index) => (
                                 <TableRow
                                     key={evaluator.id}
                                     hover
                                     onClick={() => handleEvaluatorSelect(evaluator)}
                                     sx={{ cursor: 'pointer' }}
+                                    data-testid={`evaluator-row-${evaluator.id}`}
+                                    data-evaluator-index={index}
+                                    data-evaluator-id={evaluator.id}
+                                    data-is-last-evaluator={index === paginatedEvaluators.length - 1}
                                 >
                                     <TableCell sx={{ pl: 2 }}>
                                         <Stack spacing={0.5}>

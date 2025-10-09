@@ -44,6 +44,7 @@ export const evaluateAB = async (entry, modelObj, ModelLog, originalLogId, db, c
     messages,
     numberOfAttachments: attachments.length,
     token: optimizationToken.token,
+    tokenData: optimizationToken.data,
     provider: optimizationToken.provider.name,
     model: defaultModel,
   });

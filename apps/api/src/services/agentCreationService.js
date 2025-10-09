@@ -46,8 +46,16 @@ export const createAgentFromConfig = async (config, companyId, isN8N = false) =>
           }
         });
 
+        // Add default correctness evaluator to all models
+        try {
+          await Model.addDefaultCorrectnessEvaluator(model.id, companyId);
+        } catch (error) {
+          console.error('Failed to add correctness evaluator:', error);
+          // Don't fail the model creation if evaluator addition fails
+        }
+
         if (isN8N) {
-          // add hallucination evaluator
+          // add hallucination evaluator for N8N models
           const hallucinationEvaluator = await EvaluationPrompt.findOne({
             where: {
               name: 'Hallucination & Factual Accuracy Evaluation',
@@ -73,6 +81,7 @@ export const createAgentFromConfig = async (config, companyId, isN8N = false) =>
             model: model.id,
             description: nodeConfig.description
           },
+          group: nodeConfig.group,
           modelId: model.id,
           slug: nodeConfig.slug || generateSlug(nodeConfig.name)
         });
@@ -82,6 +91,7 @@ export const createAgentFromConfig = async (config, companyId, isN8N = false) =>
           agentId: agent.id,
           name: nodeConfig.name,
           type: 'tool',
+          group: nodeConfig.group,
           config: {
             position: nodeConfig.position,
             description: nodeConfig.description,

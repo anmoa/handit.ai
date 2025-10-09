@@ -4,6 +4,8 @@ import archiver from 'archiver';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { generatePersonalizedSetup, testConnection, testConnectionCLI } from '../controllers/onboardingController.js';
+import authenticateJWT from '../middleware/authMiddleware.js';
 
 const { Agent, AgentNode, AgentConnection } = db;
 
@@ -298,5 +300,12 @@ router.get('/config/:agentId', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Generate personalized setup instructions
+router.post('/generate-personalized', generatePersonalizedSetup);
+
+// Test connection by checking if company has agents (requires authentication)
+router.post('/test-connection', authenticateJWT, testConnection);
+router.post('/test-connection-cli', authenticateJWT, testConnectionCLI);
 
 export default router; 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Card, CardHeader, CardContent, Stack, Typography, Button, IconButton, MenuItem, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Divider, Radio, RadioGroup, FormControlLabel
+  Box, Card, CardHeader, CardContent, Stack, Typography, Button, IconButton, MenuItem, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Divider, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel
 } from '@mui/material';
 import { Plus, PencilSimple, Trash, CheckCircle } from '@phosphor-icons/react/dist/ssr';
 import { useGetIntegrationTokensQuery, useCreateIntegrationTokenMutation, useUpdateIntegrationTokenMutation, useDeleteIntegrationTokenMutation, useSetOptimizationTokenMutation } from '@/services/integrationTokenService';
@@ -15,30 +15,82 @@ export function IntegrationTokensManager({ initialOptimizationTokenId }) {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editToken, setEditToken] = useState(null);
-  const [form, setForm] = useState({ providerId: '', name: '', type: '', token: '' });
+  const [form, setForm] = useState({ providerId: '', name: '', type: '', token: '', accessKeyId: '', secretAccessKey: '', region: '', authMethod: 'apiKey' });
   const [optimizationTokenId, setOptimizationTokenId] = useState(initialOptimizationTokenId || '');
 
   useEffect(() => {
     setOptimizationTokenId(initialOptimizationTokenId || '');
   }, [initialOptimizationTokenId]);
 
+  // Check if the selected provider is AWSBedrock
+  const isAWSBedrock = () => {
+    const selectedProvider = providers?.data?.find(p => p.id === form.providerId);
+    return selectedProvider?.name === 'AWSBedrock';
+  };
+
   // Handlers for add/edit
   const handleOpenDialog = (token) => {
     setEditToken(token || null);
-    setForm(token ? { providerId: token.providerId, name: token.name, type: token.type, token: token.token } : { providerId: '', name: '', type: '', token: '' });
+    if (token) {
+      // Check if token has AWS credentials in data field
+      const hasAWSData = token.data && token.data.accessKeyId && token.data.secretAccessKey && token.data.region;
+      const hasAPIKey = token.token && token.token !== 'aws-bedrock-credentials';
+      
+      // Determine auth method based on what data is available
+      let authMethod = 'apiKey';
+      if (hasAWSData) {
+        authMethod = 'awsCredentials';
+      } else if (hasAPIKey) {
+        authMethod = 'apiKey';
+      }
+      
+      setForm({ 
+        providerId: token.providerId, 
+        name: token.name, 
+        type: token.type, 
+        token: hasAPIKey ? token.token : '', 
+        accessKeyId: hasAWSData ? token.data.accessKeyId : '', 
+        secretAccessKey: hasAWSData ? token.data.secretAccessKey : '', 
+        region: hasAWSData ? token.data.region : '',
+        authMethod: authMethod
+      });
+    } else {
+      setForm({ providerId: '', name: '', type: '', token: '', accessKeyId: '', secretAccessKey: '', region: '', authMethod: 'apiKey' });
+    }
     setDialogOpen(true);
   };
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditToken(null);
-    setForm({ providerId: '', name: '', type: '', token: '' });
+    setForm({ providerId: '', name: '', type: '', token: '', accessKeyId: '', secretAccessKey: '', region: '', authMethod: 'apiKey' });
   };
-  const handleFormChange = (field, value) => setForm(f => ({ ...f, [field]: value }));
+  const handleFormChange = (field, value) => {
+    setForm(f => ({ ...f, [field]: value }));
+    // Clear AWS fields when switching away from AWSBedrock
+    if (field === 'providerId') {
+      const selectedProvider = providers?.data?.find(p => p.id === value);
+      if (selectedProvider?.name !== 'AWSBedrock') {
+        setForm(f => ({ ...f, accessKeyId: '', secretAccessKey: '', region: '', authMethod: 'apiKey' }));
+      } else {
+        setForm(f => ({ ...f, token: '' }));
+      }
+    }
+    // Clear fields when switching auth method
+    if (field === 'authMethod') {
+      if (value === 'apiKey') {
+        setForm(f => ({ ...f, accessKeyId: '', secretAccessKey: '', region: '' }));
+      } else {
+        setForm(f => ({ ...f, token: '' }));
+      }
+    }
+  };
   const handleSave = async () => {
+    const submitData = { ...form, type: 'token' };
+    
     if (editToken) {
-      await updateToken({ id: editToken.id, ...form, type: 'token' });
+      await updateToken({ id: editToken.id, ...submitData });
     } else {
-      await createToken(form);
+      await createToken(submitData);
     }
     handleCloseDialog();
   };
@@ -96,7 +148,45 @@ export function IntegrationTokensManager({ initialOptimizationTokenId }) {
               {providers?.data?.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
             </TextField>
             <TextField label="Name" value={form.name} onChange={e => handleFormChange('name', e.target.value)} fullWidth />
-            <TextField label="Token" value={form.token} onChange={e => handleFormChange('token', e.target.value)} fullWidth />
+            {isAWSBedrock() ? (
+              <>
+                <FormControl component="fieldset">
+                  <FormLabel component="legend">Authentication Method</FormLabel>
+                  <RadioGroup value={form.authMethod} onChange={e => handleFormChange('authMethod', e.target.value)}>
+                    <FormControlLabel value="apiKey" control={<Radio />} label="API Key" />
+                    <FormControlLabel value="awsCredentials" control={<Radio />} label="AWS Credentials (Access Key ID + Secret)" />
+                  </RadioGroup>
+                </FormControl>
+                {form.authMethod === 'apiKey' ? (
+                  <TextField label="API Key" value={form.token} onChange={e => handleFormChange('token', e.target.value)} fullWidth />
+                ) : (
+                  <>
+                    <TextField 
+                      label="Access Key ID" 
+                      value={form.accessKeyId} 
+                      onChange={e => handleFormChange('accessKeyId', e.target.value)} 
+                      fullWidth 
+                    />
+                    <TextField 
+                      label="Secret Access Key" 
+                      value={form.secretAccessKey} 
+                      onChange={e => handleFormChange('secretAccessKey', e.target.value)} 
+                      fullWidth 
+                      type="password"
+                    />
+                    <TextField 
+                      label="Region" 
+                      value={form.region} 
+                      onChange={e => handleFormChange('region', e.target.value)} 
+                      fullWidth 
+                      placeholder="e.g., us-east-1"
+                    />
+                  </>
+                )}
+              </>
+            ) : (
+              <TextField label="Token" value={form.token} onChange={e => handleFormChange('token', e.target.value)} fullWidth />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

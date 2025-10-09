@@ -42,7 +42,16 @@ export const getComparisonMetricsLastMonth = async (req, res) => {
     where: { id: userObject.companyId },
   });
 
-  if (company.testMode) {
+  const agentNodes = await db.AgentNode.findAll({
+    where: {
+      modelId: req.params.id,
+    },
+  });
+
+  const agent = await db.Agent.findOne({
+    where: { id: agentNodes[0]?.agentId },
+  });
+  if (company.testMode || agent?.tourAgent || agent?.demoAgent) {
     return res.status(200).json(generateMockComparisonMetrics());
   }
 
