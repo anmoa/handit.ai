@@ -652,12 +652,12 @@ const NodeDetails = ({
   }, [step]);
 
 
-  const context = parseContext(stepData?.input, model);
+  const context = parseContext(step?.input, model);
   let observation = '';
-  if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Object) {
-    observation = Object.values(stepData?.input?.previousSteps)?.map((step) => step.observation).join('\n\n');
-  } else if (stepData?.input?.previousSteps && stepData?.input?.previousSteps instanceof Array) {
-    observation = stepData?.input?.previousSteps?.map((step) => step.observation).join('\n\n');
+  if (step?.input?.previousSteps && step?.input?.previousSteps instanceof Object) {
+    observation = Object.values(step?.input?.previousSteps)?.map((step) => step.observation).join('\n\n');
+  } else if (step?.input?.previousSteps && step?.input?.previousSteps instanceof Array) {
+    observation = step?.input?.previousSteps?.map((stepItem) => stepItem.observation).join('\n\n');
   }
 
   // Get all available steps for this node

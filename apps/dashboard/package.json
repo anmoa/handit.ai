@@ -38,7 +38,7 @@
     "@fullcalendar/timegrid": "6.1.11",
     "@fullcalendar/timeline": "6.1.11",
     "@hookform/resolvers": "3.3.4",
-    "@mui/icons-material": "^6.1.2",
+    "@mui/icons-material": "^5.15.11",
     "@mui/lab": "5.0.0-alpha.166",
     "@mui/material": "5.15.11",
     "@mui/system": "5.15.11",
@@ -57,20 +57,21 @@
     "@tiptap/starter-kit": "2.2.4",
     "@tisoap/react-flow-smart-edge": "^2.0.0",
     "aws-amplify": "6.0.17",
-    "axios": "^1.7.7",
+    "axios": "^1.12.0",
     "chart.js": "^4.4.4",
+    "d3-color": "^3.1.0",
     "d3-selection": "^3.0.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.1.3",
     "dayjs": "^1.11.10",
     "embla-carousel": "8.0.0",
     "embla-carousel-react": "8.0.0",
-    "firebase": "10.8.0",
+    "firebase": "10.14.1",
     "i": "^0.3.7",
     "i18next": "23.10.0",
     "i18next-http-backend": "2.5.0",
     "mapbox-gl": "3.1.2",
-    "next": "14.1.0",
+    "next": "14.2.32",
     "next-i18next": "15.2.0",
     "npm": "^10.9.0",
     "react": "18.2.0",
@@ -97,6 +98,29 @@
     "stylis-plugin-rtl": "2.1.1",
     "swiper": "^11.1.14",
     "zod": "3.22.4"
+  },
+  "overrides": {
+    "form-data": "^4.0.4",
+    "linkifyjs": "^4.3.2",
+    "prismjs": "^1.30.0",
+    "d3-color": "^3.1.0",
+    "cross-spawn": "^7.0.5",
+    "undici": "^6.21.2",
+    "cookie": "^0.7.0",
+    "react-diff-viewer": {
+      ".": "^3.1.1",
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0"
+    },
+    "react-json-view": {
+      ".": "^1.21.3",
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0"
+    },
+    "@mui/x-date-pickers": {
+      ".": "^6.20.2",
+      "date-fns": "^4.1.0"
+    }
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "4.1.1",
