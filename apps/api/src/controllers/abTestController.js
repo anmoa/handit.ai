@@ -95,6 +95,9 @@ export const getReferenceLines = async (req, res) => {
   }
 
   const model = await Model.findByPk(req.params.id);
+  if (!model) {
+    return res.status(200).json([]);
+  }
   const modelGroup = await ModelGroup.findByPk(model.modelGroupId);
   const company = await modelGroup.getCompany();
   const referenceLines = [];
